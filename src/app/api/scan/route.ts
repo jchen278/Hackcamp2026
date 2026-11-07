@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseFridgeImage } from "@/features/vision/server/parse-fridge-image";
+import { auth0 } from "@/lib/auth0";
 
 export const maxDuration = 30; // 30-second timeout for image processing
 
@@ -7,6 +8,16 @@ export async function POST(req: NextRequest) {
   console.log("--> /api/scan hit!");
   console.log("--> GEMINI_API_KEY detected:", !!process.env.GEMINI_API_KEY);
   try {
+    // 1. Extract verified volunteer session from Auth0
+    const session = await auth0.getSession();
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized. Volunteer login required." }, { status: 401 });
+    }
+
+    // 2. Parse uploaded scan image payload
+    const volunteerEmail = session.user.email;
+
     const formData = await req.formData();
     const file = formData.get("image") as File | null;
 
@@ -17,9 +28,18 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    // 3. Extract inventory with Gemini
     const extraction = await parseFridgeImage(buffer, file.type || "image/jpeg");
 
-    return NextResponse.json({ data: extraction }, { status: 200 });
+    // 4. Return scan result tagged with volunteer email
+    return NextResponse.json(
+      {
+        data: extraction,
+        scannedBy: volunteerEmail,
+        timestamp: new Date().toISOString(),
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error("Scan route error:", error);
     return NextResponse.json(
