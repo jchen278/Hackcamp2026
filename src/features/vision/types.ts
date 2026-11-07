@@ -22,7 +22,7 @@ export const ExtractedItemSchema = z.object({
   unit: z.enum(["units", "loaves", "cans", "boxes", "bags", "liters"]),
   isPerishable: z.boolean(),
   needsRemoval: z.boolean().default(false).describe("True if item appears spoiled, severely damaged, or unsealed"),
-  notes: z.string().optional().describe("e.g., 'half-full gallon', 'soft bruising'"),
+  notes: z.string().nullable().optional().describe("e.g., 'half-full gallon', 'soft bruising'"),
 });
 
 export const FridgeScanResponseSchema = z.object({
