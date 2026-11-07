@@ -4,7 +4,7 @@ import { parseFridgeImage } from "@/features/vision/server/parse-fridge-image";
 export const maxDuration = 30; // 30-second timeout for image processing
 
 export async function POST(req: NextRequest) {
-    console.log("--> /api/scan hit!");
+  console.log("--> /api/scan hit!");
   console.log("--> GEMINI_API_KEY detected:", !!process.env.GEMINI_API_KEY);
   try {
     const formData = await req.formData();
