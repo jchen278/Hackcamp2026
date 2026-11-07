@@ -33,7 +33,7 @@ PantryPulse is a decentralized mutual-aid inventory and redistribution system fo
 - Vision Model: Gemini API (@google/genai or @google/generative-ai) enforcing strict structured output JSON.
 - Operational Database: Tiger Data (Managed PostgreSQL via pg connection pool or Drizzle/Prisma).
 - Workflow Automation: n8n Webhook endpoints for automated dispatching.
-- Package Manager: pnpm exclusively (pnpm install, pnpm dev, pnpm build).
+- Package Manager: npm exclusively (npm install, npm dev, npm build).
 
 ## 2. Core Domain Invariants & Zero-Tolerance Rules
 **Deterministic Structured Vision:** Calls to the Gemini API MUST use responseMimeType: "application/json" with an explicit JSON response schema. Never accept unvalidated freeform markdown or text descriptions from the vision model.
@@ -97,7 +97,7 @@ src/
 ```
 
 ## 4. Operational Guardrails for AI Agents
-**TypeScript Verification**: Always verify changes by running pnpm tsc --noEmit. Never mark a task as complete if type errors remain.
+**TypeScript Verification**: Always verify changes by running npm tsc --noEmit. Never mark a task as complete if type errors remain.
 
 **Component Boundaries**:
 
