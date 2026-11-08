@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { auth0 } from "@/lib/auth0";
+import { getPantries } from "@/features/pantries/queries";
 import { ScanPageClient } from "@/components/ScanPageClient";
 
 async function ScanContent() {
@@ -10,12 +11,16 @@ async function ScanContent() {
     redirect("/auth/login?returnTo=/scan");
   }
 
+  const [pantries] = await Promise.all([
+    getPantries(),
+  ]);
+
   const user = {
     name: session.user.name ?? null,
     email: session.user.email ?? null,
   };
 
-  return <ScanPageClient user={user} />;
+  return <ScanPageClient user={user} pantries={pantries} />;
 }
 
 export default function ScanPage() {
