@@ -1,6 +1,6 @@
-# AGENTS.md — PantryPulse Core Development Guide
+# AGENTS.md — Share The Loaf Core Development Guide
 
-PantryPulse is a decentralized mutual-aid inventory and redistribution system for community fridges and micro-pantries across Metro Vancouver. It uses multimodal vision (Gemini API) to transform 5-second camera snapshots of fridge shelves into structured relational inventory in Tiger Data (PostgreSQL), automatically triggering restock webhooks via n8n to volunteer networks on Discord/Telegram when staples run low.
+Share The Loaf is a decentralized mutual-aid inventory and redistribution system for community fridges and micro-pantries across Metro Vancouver. It uses multimodal vision (Gemini API) to transform 5-second camera snapshots of fridge shelves into structured relational inventory in Tiger Data (PostgreSQL), automatically triggering restock webhooks via n8n to volunteer networks on Discord/Telegram when staples run low.
 
 ---
 
