@@ -13,7 +13,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFridgeLocations } from "@/lib/fridge-locations";
-import { DEMO_LOW_STOCK_THRESHOLD, getAdminMetrics } from "@/lib/admin-overview";
+import {
+  DEMO_LOW_STOCK_THRESHOLD,
+  getAdminMetrics,
+} from "@/lib/admin-overview";
 import { getMockSubmissions } from "@/lib/mock-submission";
 import { StatusBadge } from "@/components/FridgeLocator";
 
@@ -26,14 +29,22 @@ interface UserProfile {
 
 export function AdminPageClient({ user }: { user: UserProfile }) {
   const fridges = useFridgeLocations();
-  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
   const [now] = useState<Date>(() => new Date());
 
-  const displayName = user.name || (user.email ? user.email.split("@")[0] : "Coordinator");
+  const displayName =
+    user.name || (user.email ? user.email.split("@")[0] : "Coordinator");
 
   if (!mounted) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-8 text-muted-foreground" role="status">
+      <main
+        className="min-h-screen flex items-center justify-center p-8 text-muted-foreground"
+        role="status"
+      >
         Loading admin overview…
       </main>
     );
@@ -77,7 +88,10 @@ export function AdminPageClient({ user }: { user: UserProfile }) {
     <div className="min-h-screen bg-background font-sans">
       <nav className="border-b bg-card">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">
-          <Link href="/" className="font-display text-xl font-bold text-primary">
+          <Link
+            href="/"
+            className="font-display text-xl font-bold text-primary"
+          >
             PantryPulse
           </Link>
           <div className="flex items-center gap-2">
@@ -111,25 +125,41 @@ export function AdminPageClient({ user }: { user: UserProfile }) {
         {/* Metrics Grid */}
         <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {cards.map(({ label, value, description, icon: Icon, tone }) => (
-            <div key={label} className="min-w-0 rounded-2xl border bg-card p-5 shadow-soft">
+            <div
+              key={label}
+              className="min-w-0 rounded-2xl border bg-card p-5 shadow-soft"
+            >
               <Icon className={`mb-3 h-6 w-6 ${tone}`} aria-hidden="true" />
-              <dt className="text-sm font-semibold text-muted-foreground">{label}</dt>
-              <dd className="mt-1 text-3xl font-bold tabular-nums text-foreground">{value}</dd>
-              <p className="mt-2 text-xs text-muted-foreground">{description}</p>
+              <dt className="text-sm font-semibold text-muted-foreground">
+                {label}
+              </dt>
+              <dd className="mt-1 text-3xl font-bold tabular-nums text-foreground">
+                {value}
+              </dd>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {description}
+              </p>
             </div>
           ))}
         </dl>
 
         {/* Fridge Status Breakdown */}
         <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-foreground">Community Fridge Status</h2>
+          <h2 className="text-2xl font-bold text-foreground">
+            Community Fridge Status
+          </h2>
           <ul className="divide-y rounded-2xl border bg-card overflow-hidden">
             {fridges.map((fridge) => (
-              <li key={fridge.id} className="p-4 sm:p-5 hover:bg-muted/30 transition-colors">
+              <li
+                key={fridge.id}
+                className="p-4 sm:p-5 hover:bg-muted/30 transition-colors"
+              >
                 <details className="group">
                   <summary className="flex min-h-10 cursor-pointer list-none flex-wrap items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
                     <div>
-                      <p className="font-semibold text-foreground text-base">{fridge.name}</p>
+                      <p className="font-semibold text-foreground text-base">
+                        {fridge.name}
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         {fridge.address}
                         {fridge.neighbourhood && ` · ${fridge.neighbourhood}`}
@@ -159,7 +189,9 @@ export function AdminPageClient({ user }: { user: UserProfile }) {
                               <span className="block truncate font-medium text-foreground">
                                 {item.name}
                               </span>
-                              <span className="text-xs text-muted-foreground">{item.category}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {item.category}
+                              </span>
                             </span>
                             <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground font-mono">
                               ×{item.quantity}
@@ -180,8 +212,9 @@ export function AdminPageClient({ user }: { user: UserProfile }) {
         </section>
 
         <p className="border-t pt-4 text-xs text-muted-foreground">
-          Critical shortages trigger alerts when stock drops below {DEMO_LOW_STOCK_THRESHOLD} units.
-          Audit logs and scan revisions sync directly with Tiger Data.
+          Critical shortages trigger alerts when stock drops below{" "}
+          {DEMO_LOW_STOCK_THRESHOLD} units. Audit logs and scan revisions sync
+          directly with Tiger Data.
         </p>
       </main>
     </div>

@@ -4,7 +4,10 @@ let latestSubmission: PendingInventorySubmission | null = null;
 let latestPhotoUrl: string | null = null;
 const allSubmissions: PendingInventorySubmission[] = [];
 
-export function setMockSubmission(submission: PendingInventorySubmission, photoUrl?: string | null) {
+export function setMockSubmission(
+  submission: PendingInventorySubmission,
+  photoUrl?: string | null,
+) {
   latestSubmission = submission;
   latestPhotoUrl = photoUrl ?? null;
   allSubmissions.unshift(submission);

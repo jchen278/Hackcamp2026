@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { FoodCategoryEnum } from "@/features/vision/types";
 
-export const PantryStatusEnum = z.enum(["active", "under_maintenance", "inactive"]);
+export const PantryStatusEnum = z.enum([
+  "active",
+  "under_maintenance",
+  "inactive",
+]);
 export type PantryStatus = z.infer<typeof PantryStatusEnum>;
 
 export interface PantryLocation {

@@ -39,7 +39,9 @@ export async function getPantries(): Promise<PantryLocation[]> {
 }
 
 // 2. Fetch inventory for a specific pantry
-export async function getPantryInventory(pantryId: string): Promise<InventoryItem[]> {
+export async function getPantryInventory(
+  pantryId: string,
+): Promise<InventoryItem[]> {
   const result = await query<InventoryItem>(
     `
     SELECT 
@@ -55,7 +57,7 @@ export async function getPantryInventory(pantryId: string): Promise<InventoryIte
     WHERE pantry_id = $1
     ORDER BY category ASC, item_name ASC;
   `,
-    [pantryId]
+    [pantryId],
   );
   return result.rows;
 }
@@ -106,9 +108,9 @@ export async function getFridgesWithInventory(): Promise<LiveFridge[]> {
 
 // 4. Commit verified scan to Tiger Data
 export async function commitScanResult(
-  pantryId: string, 
+  pantryId: string,
   scan: FridgeScanResponse,
-  metadata?: { scannedByEmail?: string; imageUrl?: string }
+  metadata?: { scannedByEmail?: string; imageUrl?: string },
 ) {
   const client = await pool.connect();
 
@@ -125,7 +127,7 @@ export async function commitScanResult(
         last_scanned_at = NOW()
       WHERE id = $3;
       `,
-      [scan.capacityEstimatePct, scan.cleanlinessScore, pantryId]
+      [scan.capacityEstimatePct, scan.cleanlinessScore, pantryId],
     );
 
     // B. Write to scan_audit_logs
@@ -145,11 +147,13 @@ export async function commitScanResult(
         metadata?.scannedByEmail ?? null,
         metadata?.imageUrl ?? null,
         JSON.stringify(scan),
-      ]
+      ],
     );
 
     // C. Reconcile pantry inventory: wipe old and write active items
-    await client.query(`DELETE FROM pantry_inventory WHERE pantry_id = $1;`, [pantryId]);
+    await client.query(`DELETE FROM pantry_inventory WHERE pantry_id = $1;`, [
+      pantryId,
+    ]);
 
     for (const item of scan.items) {
       if (item.needsRemoval) continue;
@@ -174,7 +178,7 @@ export async function commitScanResult(
           item.estimatedQuantity,
           item.unit,
           item.isPerishable,
-        ]
+        ],
       );
     }
 

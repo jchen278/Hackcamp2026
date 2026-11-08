@@ -73,7 +73,9 @@ export default function AdminPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-background">
-          <p className="text-sm text-muted-foreground animate-pulse">Loading admin dashboard...</p>
+          <p className="text-sm text-muted-foreground animate-pulse">
+            Loading admin dashboard...
+          </p>
         </div>
       }
     >

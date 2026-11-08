@@ -20,7 +20,7 @@ Group identical items together into a single record with accurate estimatedQuant
 
 export async function parseFridgeImage(
   imageBuffer: Buffer,
-  mimeType: string
+  mimeType: string,
 ): Promise<FridgeScanResponse> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not defined in process.env");
@@ -62,7 +62,10 @@ export async function parseFridgeImage(
     // Primary: ultra-fast, high-availability model (~2-3s)
     response = await callModel("gemini-3.5-flash-lite");
   } catch (err) {
-    console.warn("gemini-3.5-flash-lite busy, falling back to gemini-3.8-flash...", err);
+    console.warn(
+      "gemini-3.5-flash-lite busy, falling back to gemini-3.8-flash...",
+      err,
+    );
     // Fallback: flagship model with minimal thinking
     response = await callModel("gemini-3.8-flash");
   }

@@ -14,7 +14,7 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from "lucide-react";
-import { recognizeFridgePhoto, type DetectedItem, type Category } from "@/lib/inventory";
+import { type DetectedItem, type Category } from "@/lib/inventory";
 import { cn } from "@/lib/utils";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { InventoryReview } from "@/components/InventoryReview";
@@ -80,8 +80,11 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
 
   // Resolve target pantry UUID (from URL ?pantryId=..., prop pantries, or fallback)
   const queryPantryId = searchParams.get("pantryId");
-  const activePantry = pantries.find((p) => p.id === queryPantryId) || pantries[0];
-  const [selectedPantryId, setSelectedPantryId] = useState<string>(activePantry?.id || "");
+  const activePantry =
+    pantries.find((p) => p.id === queryPantryId) || pantries[0];
+  const [selectedPantryId, setSelectedPantryId] = useState<string>(
+    activePantry?.id || "",
+  );
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -94,7 +97,8 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
   const [reviewKey, setReviewKey] = useState(0);
   const runId = useRef(0);
 
-  const displayName = user.name || (user.email ? user.email.split("@")[0] : "Volunteer");
+  const displayName =
+    user.name || (user.email ? user.email.split("@")[0] : "Volunteer");
 
   const onFile = async (f: File | null) => {
     if (f && !ACCEPTED.includes(f.type)) {
@@ -136,7 +140,11 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
         const scanData: FridgeScanResponse = json.data;
         setRawScan(scanData);
 
-        if (scanData?.items && Array.isArray(scanData.items) && scanData.items.length > 0) {
+        if (
+          scanData?.items &&
+          Array.isArray(scanData.items) &&
+          scanData.items.length > 0
+        ) {
           const mapped: DetectedItem[] = scanData.items.map((it, idx) => ({
             id: `ai-${idx}-${Date.now()}`,
             name: it.name,
@@ -152,14 +160,15 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
         }
       }
 
-      // 2. Offline / Mock fallback if API fails or is unconfigured
+      /* 2. Offline / Mock fallback if API fails or is unconfigured
       const fallback = await recognizeFridgePhoto(f);
       if (id !== runId.current) return;
       setItems(fallback);
-      setAnalyzing(false);
+      setAnalyzing(false); */
     } catch {
       if (id !== runId.current) return;
-      try {
+      /*
+        try {
         const fallback = await recognizeFridgePhoto(f);
         if (id !== runId.current) return;
         setItems(fallback);
@@ -167,6 +176,7 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
         setError("Could not analyze this photo. Please try uploading it again.");
       }
       setAnalyzing(false);
+      */
     }
   };
 
@@ -197,17 +207,20 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
         })),
       };
 
-      const res = await fetch(`/api/pantries/${encodeURIComponent(targetPantryId)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scan: payload,
-          metadata: {
-            scannedByEmail: user.email ?? null,
-            imageUrl: null,
-          },
-        }),
-      });
+      const res = await fetch(
+        `/api/pantries/${encodeURIComponent(targetPantryId)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scan: payload,
+            metadata: {
+              scannedByEmail: user.email ?? null,
+              imageUrl: null,
+            },
+          }),
+        },
+      );
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
@@ -232,7 +245,9 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
             <ArrowLeft className="h-4 w-4" /> Home
           </Link>
           <span className="flex items-center gap-3 text-sm">
-            <span className="font-medium text-foreground">Hi, {displayName}</span>
+            <span className="font-medium text-foreground">
+              Hi, {displayName}
+            </span>
             <Button
               asChild
               variant="link"
@@ -248,7 +263,8 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
             Upload a fridge photo
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Snap or upload a clear photo of the fridge contents, then review the detected items.
+            Snap or upload a clear photo of the fridge contents, then review the
+            detected items.
           </p>
         </header>
 
@@ -280,16 +296,25 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
             disabled={analyzing || submitting}
           />
           {error && (
-            <p className="rounded-xl bg-destructive/15 p-3 text-sm text-destructive">{error}</p>
+            <p className="rounded-xl bg-destructive/15 p-3 text-sm text-destructive">
+              {error}
+            </p>
           )}
           {file && at && (
             <dl className="grid gap-3 text-sm sm:grid-cols-3">
               <Meta icon={<FileImage />} label="File" value={file.name} />
-              <Meta icon={<HardDrive />} label="Size" value={`${(file.size / 1024).toFixed(0)} KB`} />
+              <Meta
+                icon={<HardDrive />}
+                label="Size"
+                value={`${(file.size / 1024).toFixed(0)} KB`}
+              />
               <Meta
                 icon={<CalendarClock />}
                 label="Uploaded"
-                value={at.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                value={at.toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
               />
             </dl>
           )}
@@ -298,9 +323,12 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
         {analyzing && (
           <section className="flex flex-col items-center rounded-3xl border bg-card p-8 text-center shadow-soft animate-in fade-in">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="mt-4 text-lg font-semibold">Analyzing your fridge photo...</p>
+            <p className="mt-4 text-lg font-semibold">
+              Analyzing your fridge photo...
+            </p>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Multimodal vision is identifying food items, evaluating capacity, and checking spoilage.
+              Multimodal vision is identifying food items, evaluating capacity,
+              and checking spoilage.
             </p>
           </section>
         )}
@@ -310,12 +338,20 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
           <section className="rounded-3xl border bg-card p-5 shadow-soft space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-2xl bg-muted p-4">
-                <span className="text-xs uppercase font-medium text-muted-foreground">Capacity</span>
-                <p className="text-2xl font-bold text-primary mt-1">{rawScan.capacityEstimatePct}%</p>
+                <span className="text-xs uppercase font-medium text-muted-foreground">
+                  Capacity
+                </span>
+                <p className="text-2xl font-bold text-primary mt-1">
+                  {rawScan.capacityEstimatePct}%
+                </p>
               </div>
               <div className="rounded-2xl bg-muted p-4">
-                <span className="text-xs uppercase font-medium text-muted-foreground">Cleanliness</span>
-                <p className="text-2xl font-bold capitalize text-primary mt-1">{rawScan.cleanlinessScore}</p>
+                <span className="text-xs uppercase font-medium text-muted-foreground">
+                  Cleanliness
+                </span>
+                <p className="text-2xl font-bold capitalize text-primary mt-1">
+                  {rawScan.cleanlinessScore}
+                </p>
               </div>
             </div>
 
@@ -330,8 +366,13 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
                   {rawScan.items
                     .filter((i) => i.needsRemoval)
                     .map((item, idx) => (
-                      <li key={idx} className="flex justify-between items-center bg-card/60 p-2 rounded-lg">
-                        <span className="font-medium text-destructive">{item.name}</span>
+                      <li
+                        key={idx}
+                        className="flex justify-between items-center bg-card/60 p-2 rounded-lg"
+                      >
+                        <span className="font-medium text-destructive">
+                          {item.name}
+                        </span>
                         <span>{item.notes || "Spoiled / Unsafe"}</span>
                       </li>
                     ))}
@@ -358,7 +399,15 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
   );
 }
 
-function Meta({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Meta({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex items-start gap-2 rounded-xl bg-muted p-3 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0 [&_svg]:text-primary">
       <span className="mt-0.5">{icon}</span>
@@ -380,13 +429,17 @@ function Results({ items }: { items: DetectedItem[] }) {
   return (
     <section className="space-y-4 rounded-3xl border bg-card p-5 shadow-soft sm:p-6">
       <h2 className="flex items-center gap-2 text-xl font-bold">
-        <Sparkles className="h-5 w-5 text-primary" /> Multimodal recognition results
+        <Sparkles className="h-5 w-5 text-primary" /> Multimodal recognition
+        results
       </h2>
       <p className="flex gap-2 rounded-xl bg-muted p-3 text-sm text-muted-foreground">
         <Info className="h-4 w-4 shrink-0 translate-y-0.5" />
-        Quantities and categories are AI estimates. You can adjust counts and categories below before submitting.
+        Quantities and categories are AI estimates. You can adjust counts and
+        categories below before submitting.
       </p>
-      <p className="text-sm font-semibold">{items.length} food items detected</p>
+      <p className="text-sm font-semibold">
+        {items.length} food items detected
+      </p>
       <ul className="space-y-3">
         {items.map((it) => (
           <li key={it.id} className="rounded-2xl border p-4 bg-background">
@@ -401,7 +454,7 @@ function Results({ items }: { items: DetectedItem[] }) {
                   <span
                     className={cn(
                       "rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                      perish[it.perishability][1]
+                      perish[it.perishability][1],
                     )}
                   >
                     {perish[it.perishability][0]}
@@ -417,12 +470,14 @@ function Results({ items }: { items: DetectedItem[] }) {
                       <span
                         className={cn(
                           "block h-full",
-                          it.confidence < 0.7 ? "bg-warning" : "bg-primary"
+                          it.confidence < 0.7 ? "bg-warning" : "bg-primary",
                         )}
                         style={{ width: `${Math.round(it.confidence * 100)}%` }}
                       />
                     </span>
-                    <span className="font-semibold">{Math.round(it.confidence * 100)}%</span>
+                    <span className="font-semibold">
+                      {Math.round(it.confidence * 100)}%
+                    </span>
                   </span>
                 ) : (
                   <span className="text-muted-foreground">Not available</span>
@@ -441,7 +496,13 @@ function Results({ items }: { items: DetectedItem[] }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -450,7 +511,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-async function compressImage(file: File, maxWidth = 1280, quality = 0.75): Promise<File> {
+async function compressImage(
+  file: File,
+  maxWidth = 1280,
+  quality = 0.75,
+): Promise<File> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -478,10 +543,14 @@ async function compressImage(file: File, maxWidth = 1280, quality = 0.75): Promi
               resolve(file);
               return;
             }
-            resolve(new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" }));
+            resolve(
+              new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+                type: "image/jpeg",
+              }),
+            );
           },
           "image/jpeg",
-          quality
+          quality,
         );
       };
     };

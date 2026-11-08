@@ -11,9 +11,7 @@ async function ScanContent() {
     redirect("/auth/login?returnTo=/scan");
   }
 
-  const [pantries] = await Promise.all([
-    getPantries(),
-  ]);
+  const [pantries] = await Promise.all([getPantries()]);
 
   const user = {
     name: session.user.name ?? null,
@@ -28,7 +26,9 @@ export default function ScanPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-background">
-          <p className="text-sm text-muted-foreground animate-pulse">Loading scanner session...</p>
+          <p className="text-sm text-muted-foreground animate-pulse">
+            Loading scanner session...
+          </p>
         </div>
       }
     >

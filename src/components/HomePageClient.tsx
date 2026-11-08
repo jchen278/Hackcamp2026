@@ -25,7 +25,11 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { FridgePicker, MapPreview, LocationStatus } from "@/components/FridgeLocator";
+import {
+  FridgePicker,
+  MapPreview,
+  LocationStatus,
+} from "@/components/FridgeLocator";
 import { AddFridgeLocation } from "@/components/AddFridgeLocation";
 import type { LiveFridge } from "@/features/pantries/queries";
 import garden from "@/assets/community-garden.jpg";
@@ -41,27 +45,46 @@ interface HomePageClientProps {
   initialFridges?: LiveFridge[];
 }
 
-export function HomePageClient({ user, initialFridges = [] }: HomePageClientProps) {
-  // Map LiveFridge from Tiger Data into the UI's Fridge shape
+function getFridgeStatus(
+  capacityPct?: number,
+): "Well stocked" | "Running low" | "Nearly empty" {
+  if (!capacityPct || capacityPct < 25) return "Nearly empty";
+  if (capacityPct < 65) return "Running low";
+  return "Well stocked";
+}
+
+export function HomePageClient({
+  user,
+  initialFridges = [],
+}: HomePageClientProps) {
+  // Automatically hydrates from database rows and stays in sync
   const fridges: Fridge[] = initialFridges.map((f) => ({
     ...f,
-    neighbourhood: f.neighbourhood ?? undefined,
-    coordinates: f.coordinates ?? undefined,
-    status: f.status ?? "active",
-    // Supply defaults for the missing Lovable UI properties:
-    map: {
-      coordinates: f.coordinates ?? [49.2606, -123.246], // default fallback to Vancouver/UBC
-    } as any,
+    neighbourhood: f.neighbourhood ?? "",
+    status: getFridgeStatus(f.capacityPct),
+    coordinates: f.coordinates
+      ? { lat: f.coordinates[0], lng: f.coordinates[1] }
+      : undefined,
+    map: { x: 50, y: 50 } as any,
     history: [],
-  })) as unknown as Fridge[];
-  const [fridgeId, setFridgeId] = useState<string | null>(fridges[0]?.id ?? null);
+    inventory: (f.inventory || []).map((it) => ({
+      name: it.name,
+      category: it.category,
+      quantity: it.quantity,
+    })) as any,
+  }));
+
+  const [fridgeId, setFridgeId] = useState<string | null>(
+    fridges[0]?.id ?? null,
+  );
   const fridge = fridges.find((f) => f.id === fridgeId) ?? fridges[0];
 
   const scanPath = "/scan";
   const loginPath = "/auth/login";
   const logoutPath = "/auth/logout";
 
-  const displayName = user?.name || (user?.email ? user.email.split("@")[0] : null);
+  const displayName =
+    user?.name || (user?.email ? user.email.split("@")[0] : null);
 
   return (
     <div className="min-h-screen bg-background font-sans">
@@ -71,7 +94,11 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
           <div className="justify-self-start flex items-center gap-2">
             {user ? (
               <div className="flex items-center gap-2">
-                <Button asChild variant="ghost" className="h-10 px-3 text-primary gap-2">
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="h-10 px-3 text-primary gap-2"
+                >
                   <Link href="/scan">
                     <Camera className="h-4 w-4" />
                     <span className="max-w-28 truncate font-medium">
@@ -79,14 +106,23 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
                     </span>
                   </Link>
                 </Button>
-                <Button asChild variant="ghost" size="sm" className="h-10 text-xs text-muted-foreground hover:text-destructive">
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="h-10 text-xs text-muted-foreground hover:text-destructive"
+                >
                   <a href={logoutPath} title="Log out">
                     <LogOut className="h-4 w-4" />
                   </a>
                 </Button>
               </div>
             ) : (
-              <Button asChild variant="ghost" className="h-10 px-3 text-primary gap-2">
+              <Button
+                asChild
+                variant="ghost"
+                className="h-10 px-3 text-primary gap-2"
+              >
                 <a href={loginPath}>
                   <LogIn className="h-4 w-4" />
                   <span>Log in</span>
@@ -95,7 +131,10 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
             )}
           </div>
 
-          <Link href="/" className="flex items-center gap-2 font-display text-xl font-bold text-primary">
+          <Link
+            href="/"
+            className="flex items-center gap-2 font-display text-xl font-bold text-primary"
+          >
             <Leaf className="h-5 w-5" />
             <span>PantryPulse</span>
           </Link>
@@ -116,7 +155,10 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
               align="end"
               className="w-56"
               onCloseAutoFocus={(event) => {
-                if (typeof window !== "undefined" && window.location.hash === "#explore") {
+                if (
+                  typeof window !== "undefined" &&
+                  window.location.hash === "#explore"
+                ) {
                   event.preventDefault();
                 }
               }}
@@ -136,7 +178,10 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <a href={logoutPath} className="flex items-center gap-2 text-destructive">
+                    <a
+                      href={logoutPath}
+                      className="flex items-center gap-2 text-destructive"
+                    >
                       <LogOut className="h-4 w-4" />
                       <span>Log out ({displayName})</span>
                     </a>
@@ -154,7 +199,9 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
                 asChild
                 onSelect={() => {
                   window.setTimeout(() => {
-                    document.getElementById("explore")?.scrollIntoView({ block: "start", behavior: "smooth" });
+                    document
+                      .getElementById("explore")
+                      ?.scrollIntoView({ block: "start", behavior: "smooth" });
                   }, 100);
                 }}
               >
@@ -192,15 +239,21 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
             </p>
             <h1 className="hero-name text-primary">PantryPulse</h1>
             <p className="hero-tagline mt-2 font-display text-primary">
-              A little shared,<br />
+              A little shared,
+              <br />
               <em className="italic">a lot of good.</em>
             </p>
             <p className="mt-5 max-w-md text-base leading-relaxed text-primary/90 font-medium">
-              Find fresh food in your neighbourhood.<br />
+              Find fresh food in your neighbourhood.
+              <br />
               Share what you can. Take what you need.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
-              <Button asChild size="lg" className="h-12 rounded-full px-6 shadow-md gap-2">
+              <Button
+                asChild
+                size="lg"
+                className="h-12 rounded-full px-6 shadow-md gap-2"
+              >
                 <a href="#explore">
                   <MapPin className="h-4 w-4" /> Find a fridge
                 </a>
@@ -223,12 +276,16 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
         </section>
 
         {/* 01 / How it works */}
-        <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-20">
+        <section
+          id="how-it-works"
+          className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-20"
+        >
           <div className="flex items-end justify-between gap-4 border-b border-primary/20 pb-6">
             <div>
               <p className="section-kicker">01 / How it works</p>
               <h2 className="mt-2 text-3xl font-medium sm:text-4xl text-foreground">
-                Small acts. <em className="italic font-display">Shared abundance.</em>
+                Small acts.{" "}
+                <em className="italic font-display">Shared abundance.</em>
               </h2>
             </div>
             <ArrowDown className="mb-1 hidden h-6 w-6 text-primary sm:block" />
@@ -257,16 +314,26 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
                 href: "/admin",
               },
             ].map((step, i) => (
-              <li key={step.title} className="min-w-0 bg-card/60 rounded-2xl p-6 border border-primary/10">
+              <li
+                key={step.title}
+                className="min-w-0 bg-card/60 rounded-2xl p-6 border border-primary/10"
+              >
                 <div className="flex items-center gap-3 text-primary">
                   <step.icon className="h-5 w-5" />
                   <span className="text-xs font-bold font-mono">0{i + 1}</span>
                 </div>
                 <h3 className="mt-4 text-2xl font-medium">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.text}</p>
-                <Button asChild variant="link" className="mt-4 h-auto px-0 text-left font-medium text-primary">
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {step.text}
+                </p>
+                <Button
+                  asChild
+                  variant="link"
+                  className="mt-4 h-auto px-0 text-left font-medium text-primary"
+                >
                   <a href={step.href}>
-                    {step.link} <ArrowUpRight className="h-3.5 w-3.5 inline ml-1" />
+                    {step.link}{" "}
+                    <ArrowUpRight className="h-3.5 w-3.5 inline ml-1" />
                   </a>
                 </Button>
               </li>
@@ -275,24 +342,37 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
         </section>
 
         {/* 02 / Explore community fridges */}
-        <section id="explore" className="scroll-mt-8 bg-card py-16 sm:py-20 border-y border-border">
+        <section
+          id="explore"
+          className="scroll-mt-8 bg-card py-16 sm:py-20 border-y border-border"
+        >
           <div className="mx-auto max-w-7xl px-5 sm:px-8">
             <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="section-kicker">02 / Explore community fridges</p>
                 <h2 className="mt-2 text-3xl font-medium sm:text-4xl text-foreground">
-                  Good food, <em className="italic font-display">closer to home.</em>
+                  Good food,{" "}
+                  <em className="italic font-display">closer to home.</em>
                 </h2>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Find a spot in your neighbourhood. Real-time updates without barriers.
+                  Find a spot in your neighbourhood. Real-time updates without
+                  barriers.
                 </p>
               </div>
               <AddFridgeLocation onAdded={setFridgeId} />
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-              <MapPreview fridges={fridges} selected={fridgeId} onSelect={setFridgeId} />
-              <FridgePicker fridges={fridges} value={fridgeId} onChange={setFridgeId} />
+              <MapPreview
+                fridges={fridges}
+                selected={fridgeId}
+                onSelect={setFridgeId}
+              />
+              <FridgePicker
+                fridges={fridges}
+                value={fridgeId}
+                onChange={setFridgeId}
+              />
             </div>
 
             {fridge && (
@@ -305,7 +385,9 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
                       {fridge.neighbourhood && ` · ${fridge.neighbourhood}`}
                     </p>
                     {!fridge.coordinates && (
-                      <p className="mt-1 text-xs text-muted-foreground">Map pin not set.</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Map pin not set.
+                      </p>
                     )}
                   </div>
                   <LocationStatus fridge={fridge} />
@@ -323,8 +405,12 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
                           className="flex items-center justify-between border-b border-border/80 py-2.5 text-sm"
                         >
                           <span>
-                            <strong className="font-medium text-foreground">{item.name}</strong>{" "}
-                            <span className="text-xs text-muted-foreground">· {item.category}</span>
+                            <strong className="font-medium text-foreground">
+                              {item.name}
+                            </strong>{" "}
+                            <span className="text-xs text-muted-foreground">
+                              · {item.category}
+                            </span>
                           </span>
                           <span className="font-mono font-semibold rounded-full bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
                             {item.quantity} {item.unit || "units"}
@@ -334,7 +420,8 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
                     </ul>
                   ) : (
                     <p className="mt-2 text-sm text-muted-foreground italic">
-                      No items currently recorded in Tiger Data for this location.
+                      No items currently recorded in Tiger Data for this
+                      location.
                     </p>
                   )}
                 </div>
@@ -356,20 +443,23 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
           <div className="mx-auto max-w-7xl px-5 sm:px-8">
             <p className="section-kicker">03 / Our impact</p>
             <h2 className="mt-2 max-w-2xl text-3xl font-medium sm:text-4xl text-foreground">
-              More than food.<br />
+              More than food.
+              <br />
               <em className="italic font-display">A community that cares.</em>
             </h2>
             <div className="mt-10 grid gap-6 md:grid-cols-2">
               <div className="rounded-2xl border border-primary/20 bg-background/80 p-7 shadow-soft">
                 <p className="section-kicker">Our vision</p>
                 <p className="mt-3 font-display text-xl leading-relaxed text-primary sm:text-2xl">
-                  A city where no neighbour goes hungry and good food is shared freely.
+                  A city where no neighbour goes hungry and good food is shared
+                  freely.
                 </p>
               </div>
               <div className="rounded-2xl border border-primary/20 bg-background/80 p-7 shadow-soft">
                 <p className="section-kicker">Our mission</p>
                 <p className="mt-3 font-display text-xl leading-relaxed text-primary sm:text-2xl">
-                  To keep community fridges full by making it easy for neighbours to share food and report what&apos;s available.
+                  To keep community fridges full by making it easy for
+                  neighbours to share food and report what&apos;s available.
                 </p>
               </div>
             </div>
@@ -391,7 +481,10 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
                   text: "Neighbours helping neighbours, one shared shelf at a time.",
                 },
               ].map((item) => (
-                <li key={item.title} className="border-t border-primary/20 pt-6">
+                <li
+                  key={item.title}
+                  className="border-t border-primary/20 pt-6"
+                >
                   <item.icon className="h-6 w-6 text-primary" />
                   <h3 className="mt-3 text-xl font-medium">{item.title}</h3>
                   <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
@@ -404,24 +497,39 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
         </section>
 
         {/* 04 / Get involved */}
-        <section id="get-involved" className="mx-auto max-w-7xl px-5 py-16 text-center sm:px-8 sm:py-24">
+        <section
+          id="get-involved"
+          className="mx-auto max-w-7xl px-5 py-16 text-center sm:px-8 sm:py-24"
+        >
           <Leaf className="mx-auto h-8 w-8 text-primary" />
           <p className="section-kicker mt-4">04 / Get involved</p>
           <h2 className="mt-3 text-3xl font-medium sm:text-5xl text-foreground">
-            There’s a place<br />
+            There’s a place
+            <br />
             <em className="italic font-display">for you at the table.</em>
           </h2>
           <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-muted-foreground">
-            Donate a little extra. Give a little time. Share a photo.<br />
+            Donate a little extra. Give a little time. Share a photo.
+            <br />
             Every small act helps a neighbour.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <Button asChild size="lg" className="h-12 rounded-full px-8 shadow-md">
+            <Button
+              asChild
+              size="lg"
+              className="h-12 rounded-full px-8 shadow-md"
+            >
               <Link href={scanPath}>
-                Volunteer or donate <ArrowUpRight className="h-4 w-4 ml-1 inline" />
+                Volunteer or donate{" "}
+                <ArrowUpRight className="h-4 w-4 ml-1 inline" />
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="h-12 rounded-full px-8">
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="h-12 rounded-full px-8"
+            >
               <a href="#explore">
                 Browse as a guest <MapPin className="h-4 w-4 ml-1 inline" />
               </a>
@@ -435,7 +543,9 @@ export function HomePageClient({ user, initialFridges = [] }: HomePageClientProp
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-8 sm:px-8">
           <div className="flex items-center gap-2">
             <Leaf className="h-5 w-5 text-primary" />
-            <span className="font-display text-xl font-bold text-primary">PantryPulse</span>
+            <span className="font-display text-xl font-bold text-primary">
+              PantryPulse
+            </span>
           </div>
           <span className="text-xs text-muted-foreground">
             With care, for our neighbours. · Vancouver, BC

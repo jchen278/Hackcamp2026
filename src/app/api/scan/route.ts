@@ -13,7 +13,10 @@ export async function POST(req: NextRequest) {
     const session = await auth0.getSession();
 
     if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized. Volunteer login required." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized. Volunteer login required." },
+        { status: 401 },
+      );
     }
 
     // 2. Parse uploaded scan image payload
@@ -23,20 +26,32 @@ export async function POST(req: NextRequest) {
     const file = formData.get("image") as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: "No image file provided" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No image file provided" },
+        { status: 400 },
+      );
     }
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
     // 3. Extract inventory with Gemini
-    const extraction = await parseFridgeImage(buffer, file.type || "image/jpeg");
+    const extraction = await parseFridgeImage(
+      buffer,
+      file.type || "image/jpeg",
+    );
 
     // 4. Check low-stock thresholds & trigger n8n restock alert if needed
     await checkAndTriggerRestockAlert({
-      pantryId: (formData.get("pantryId") as string) || "b8a8b13d-5df7-4b7b-8919-4c8d5c41498b",
-      pantryName: (formData.get("pantryName") as string) || "Little Mountain Community Fridge",
-      address: (formData.get("address") as string) || "Main St & 30th Ave, Vancouver, BC",
+      pantryId:
+        (formData.get("pantryId") as string) ||
+        "b8a8b13d-5df7-4b7b-8919-4c8d5c41498b",
+      pantryName:
+        (formData.get("pantryName") as string) ||
+        "Little Mountain Community Fridge",
+      address:
+        (formData.get("address") as string) ||
+        "Main St & 30th Ave, Vancouver, BC",
       capacityPct: extraction.capacityEstimatePct,
       items: extraction.items,
     });
@@ -48,14 +63,14 @@ export async function POST(req: NextRequest) {
         scannedBy: volunteerEmail,
         timestamp: new Date().toISOString(),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error: unknown) {
     console.error("Scan route error:", error);
-    const message = error instanceof Error ? error.message : "Failed to process pantry snapshot";
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to process pantry snapshot";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -6,8 +6,11 @@ export async function POST(req: NextRequest) {
 
     if (!webhookUrl) {
       return NextResponse.json(
-        { error: "N8N_RESTOCK_WEBHOOK_URL environment variable is not configured" },
-        { status: 500 }
+        {
+          error:
+            "N8N_RESTOCK_WEBHOOK_URL environment variable is not configured",
+        },
+        { status: 500 },
       );
     }
 
@@ -28,15 +31,18 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: true, message: "Restock alert dispatched to n8n successfully" },
-      { status: 200 }
+      {
+        success: true,
+        message: "Restock alert dispatched to n8n successfully",
+      },
+      { status: 200 },
     );
   } catch (error: unknown) {
     console.error("Restock webhook dispatch error:", error);
-    const message = error instanceof Error ? error.message : "Failed to dispatch restock alert";
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to dispatch restock alert";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
