@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "Find community fridges in Vancouver, share surplus food, and help your neighbours with SpreadTheLoaf.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/spreadtheloaf-bread.png",
   },
 };
 
