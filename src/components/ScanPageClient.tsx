@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -12,12 +12,12 @@ import {
   Loader2,
   Sparkles,
   AlertTriangle,
-  CheckCircle2,
 } from "lucide-react";
 import { type DetectedItem, type Category } from "@/lib/inventory";
 import { cn } from "@/lib/utils";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { InventoryReview } from "@/components/InventoryReview";
+import { ScanConfirmation } from "@/components/scan/scan-confirmation";
 import { Button } from "@/components/ui/button";
 import { setMockSubmission } from "@/lib/mock-submission";
 import type { PantryLocation } from "@/types/pantry";
@@ -92,6 +92,9 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<DetectedItem[] | null>(null);
   const [rawScan, setRawScan] = useState<FridgeScanResponse | null>(null);
+  const [scanPointsAwarded, setScanPointsAwarded] = useState(0);
+  const [pointsBalance, setPointsBalance] = useState<number | null>(null);
+  const [pointsUpdateFailed, setPointsUpdateFailed] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reviewKey, setReviewKey] = useState(0);
@@ -99,6 +102,34 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
 
   const displayName =
     user.name || (user.email ? user.email.split("@")[0] : "Volunteer");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void fetch("/api/points")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load points.");
+        const result: unknown = await response.json();
+        if (
+          typeof result === "object" &&
+          result !== null &&
+          "points" in result &&
+          typeof result.points === "number" &&
+          Number.isSafeInteger(result.points) &&
+          result.points >= 0 &&
+          !cancelled
+        ) {
+          setPointsBalance(result.points);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPointsBalance(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onFile = async (f: File | null) => {
     if (f && !ACCEPTED.includes(f.type)) {
@@ -112,6 +143,8 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
     setAt(f ? new Date() : null);
     setItems(null);
     setRawScan(null);
+    setScanPointsAwarded(0);
+    setPointsUpdateFailed(false);
 
     const id = ++runId.current;
     if (!f) {
@@ -135,30 +168,54 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
 
       if (id !== runId.current) return;
 
-      if (res.ok) {
-        const json = await res.json();
-        const scanData: FridgeScanResponse = json.data;
-        setRawScan(scanData);
-
-        if (
-          scanData?.items &&
-          Array.isArray(scanData.items) &&
-          scanData.items.length > 0
-        ) {
-          const mapped: DetectedItem[] = scanData.items.map((it, idx) => ({
-            id: `ai-${idx}-${Date.now()}`,
-            name: it.name,
-            category: mapVisionCategoryToUi(it.category),
-            quantity: Number(it.estimatedQuantity) || 1,
-            perishability: it.isPerishable ? "high" : "low",
-            confidence: 0.95,
-            source: "ai" as const,
-          }));
-          setItems(mapped);
-          setAnalyzing(false);
-          return;
-        }
+      const json = await res.json();
+      if (!res.ok) {
+        setError(
+          typeof json.error === "string"
+            ? json.error
+            : "Could not analyze this photo. Please try again.",
+        );
+        setAnalyzing(false);
+        return;
       }
+
+      const scanData: FridgeScanResponse = json.data;
+      setRawScan(scanData);
+      const pointsAwarded =
+        typeof json.pointsAwarded === "number" &&
+        Number.isSafeInteger(json.pointsAwarded) &&
+        json.pointsAwarded > 0
+          ? json.pointsAwarded
+          : 0;
+      setScanPointsAwarded(pointsAwarded);
+      setPointsUpdateFailed(json.pointsStatus === "failed");
+      if (
+        typeof json.totalPoints === "number" &&
+        Number.isSafeInteger(json.totalPoints) &&
+        json.totalPoints >= 0
+      ) {
+        setPointsBalance(json.totalPoints);
+      }
+
+      if (
+        scanData?.items &&
+        Array.isArray(scanData.items) &&
+        scanData.items.length > 0
+      ) {
+        const mapped: DetectedItem[] = scanData.items.map((it, idx) => ({
+          id: `ai-${idx}-${Date.now()}`,
+          name: it.name,
+          category: mapVisionCategoryToUi(it.category),
+          quantity: Number(it.estimatedQuantity) || 1,
+          perishability: it.isPerishable ? "high" : "low",
+          confidence: 0.95,
+          source: "ai" as const,
+        }));
+        setItems(mapped);
+      } else {
+        setError("No food items were detected. Try a clearer photo of the fridge contents.");
+      }
+      setAnalyzing(false);
 
       /* 2. Offline / Mock fallback if API fails or is unconfigured
       const fallback = await recognizeFridgePhoto(f);
@@ -167,16 +224,8 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
       setAnalyzing(false); */
     } catch {
       if (id !== runId.current) return;
-      /*
-        try {
-        const fallback = await recognizeFridgePhoto(f);
-        if (id !== runId.current) return;
-        setItems(fallback);
-      } catch {
-        setError("Could not analyze this photo. Please try uploading it again.");
-      }
+      setError("Could not analyze this photo. Please try uploading it again.");
       setAnalyzing(false);
-      */
     }
   };
 
@@ -244,6 +293,9 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
             <ArrowLeft className="h-4 w-4" /> Home
           </Link>
           <span className="flex items-center gap-3 text-sm">
+            <span className="rounded-full bg-secondary px-3 py-1 font-semibold text-secondary-foreground">
+              {pointsBalance === null ? "Points unavailable" : `${pointsBalance} points`}
+            </span>
             <span className="font-medium text-foreground">
               Hi, {displayName}
             </span>
@@ -382,6 +434,18 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
         )}
 
         {items && <Results items={items} />}
+
+        {scanPointsAwarded > 0 && (
+          <ScanConfirmation
+            pointsAwarded={scanPointsAwarded}
+            totalPoints={pointsBalance ?? 0}
+          />
+        )}
+        {pointsUpdateFailed && (
+          <p role="status" className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">
+            The scan completed, but points could not be saved to Auth0. Check the Management API configuration and permissions.
+          </p>
+        )}
 
         {items && file && (
           <InventoryReview
