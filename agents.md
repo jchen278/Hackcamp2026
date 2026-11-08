@@ -50,51 +50,77 @@ PantryPulse is a decentralized mutual-aid inventory and redistribution system fo
 - Admin: Add/edit pantry locations, configure n8n alert thresholds.
 
 ## 3. Directory Layout & Module Ownership
+
+The codebase is built on Next.js 16 (App Router) using React 19, Auth0 middleware proxying, Tiger Data (PostgreSQL), and Gemini multimodal vision.
+
 ```text
 src/
 ├── app/
+│   ├── admin/
+│   │   └── page.tsx                  # Volunteer/admin management & threshold controls
 │   ├── api/
 │   │   ├── pantries/
-│   │   │   ├── route.ts              # GET: List active community pantries & status
-│   │   │   └── [id]/route.ts          # GET/PATCH: Single pantry details & inventory
-│   │   ├── scan/route.ts             # POST: Accept image, run Gemini extraction, write DB
-│   │   └── webhook/restock/route.ts  # POST: Relay depleted inventory events to n8n
-│   ├── layout.tsx                    # Root layout with Auth0 provider & navigation
-│   ├── page.tsx                      # Public map & pantry status directory
-│   ├── scan/page.tsx                 # Mobile camera capture interface
-│   └── admin/page.tsx                # Inventory thresholds & volunteer management
+│   │   │   ├── [id]/
+│   │   │   │   └── route.ts          # GET: Fetch pantry inventory | POST: Commit verified scan & trigger n8n alert
+│   │   │   └── route.ts              # GET: List active pantries from Tiger Data
+│   │   └── scan/
+│   │       └── route.ts              # POST: Accept image multipart, run Gemini extraction pipeline
+│   ├── favicon.ico
+│   ├── globals.css                   # Global styles & Tailwind CSS configuration
+│   ├── layout.tsx                    # Root layout with Auth0 provider & navigation shell
+│   ├── page.tsx                      # Landing page: community map & fridge finder
+│   └── scan/
+│       └── page.tsx                  # Volunteer scan & review page
+├── assets/                           # Static imagery & demo assets
+│   ├── community-garden.jpg
+│   └── garden-harvest.jpg.asset.json
 ├── components/
-│   ├── common/                       # Navbar, StatusBadge, QuantityIndicator
-│   ├── pantry/
-│   │   ├── pantry-card.tsx           # Summary card for map popups and list views
-│   │   ├── inventory-list.tsx        # Categorized item table with expiry flags
-│   │   └── low-stock-alert.tsx       # Urgent restock banner component
-│   ├── scan/
-│   │   ├── camera-capture.tsx        # 'use client' live video stream / snapshot trigger
-│   │   └── scan-confirmation.tsx     # Review extracted items before saving to DB
-│   └── ui/                           # shadcn/ui primitives (dialog, button, table, badge)
+│   ├── ui/                           # shadcn/ui primitives (dialog, button, table, sheet, drawer, select, etc.)
+│   ├── AddFridgeLocation.tsx         # Modal dialog / form to propose and add a community fridge
+│   ├── FridgeLocator.tsx             # Interactive Leaflet map, fridge directory, and search interface
+│   ├── InventoryReview.tsx           # Item verification table, editable counts, and manual override drawer
+│   └── PhotoUpload.tsx               # Drag-and-drop / mobile camera image upload interface
 ├── features/
-│   ├── vision/
-│   │   ├── server/
-│   │   │   ├── gemini.ts             # Gemini client & structured prompt definitions
-│   │   │   └── parse-fridge-image.ts # Multipart processing & schema validation
-│   │   └── types.ts                  # Raw and sanitized vision extraction types
-│   ├── inventory/
-│   │   ├── server/                   # Tiger Data SQL queries (inventory updates, logs)
-│   │   └── types.ts                  # InventoryItem, Category, StockLevel types
-│   └── alerts/
-│       └── server/                   # n8n webhook dispatcher (low stock / cleanup alerts)
+│   ├── pantries/
+│   │   └── queries.ts                # Tiger Data SQL queries (getPantries, getPantryInventory, commitScanResult)
+│   └── vision/
+│       ├── server/
+│       │   └── parse-fridge-image.ts # Multimodal Gemini API parsing & structured Zod validation
+│       └── types.ts                  # Vision schema definitions (ExtractedItemSchema, FoodCategoryEnum)
+├── hooks/
+│   └── use-mobile.tsx                # Responsive breakpoint detection hook
 ├── lib/
-│   ├── db.ts                         # Tiger Data Postgres connection pool singleton
-│   ├── auth0.ts                      # Auth0 session helper
-│   ├── utils.ts                      # cn() class helper & relative timestamp formatters
-│   └── mocks/
-│       ├── sample-pantries.ts        # Seed Vancouver community fridges
-│       └── sample-scan-result.ts     # Sample Gemini structured output for offline UI work
-└── types/
-    ├── database.ts                   # Strongly-typed tables from Tiger Data
-    └── api.ts                        # Standard API response envelopes: { data, error }
+│   ├── mocks/
+│   │   ├── fridge_test_1.jpg         # Sample test fridge snapshot for vision testing
+│   │   └── sample-scan-result.ts     # Sample Gemini structured output for offline UI work
+│   ├── auth0.ts                      # Auth0 client configuration & session helper
+│   ├── db.ts                         # Tiger Data PostgreSQL connection pool singleton
+│   ├── fridge-locations.ts           # Client reactive store for fridge locations & user-drafted locations
+│   ├── inventory-submission.ts       # Review validation & pending submission generator
+│   ├── inventory.ts                  # Categories, SAMPLE_FRIDGES seed data, domain item & fridge types
+│   └── utils.ts                      # cn() class helper & relative timestamp formatters
+├── types/
+│   └── pantry.ts                     # Shared domain models (PantryLocation, InventoryItem, RestockAlertPayload)
+├── proxy.ts                          # Next.js 16 Auth0 middleware proxy layer
+└── styles.css                        # App design system & custom utility styles
 ```
+
+### Module Responsibilities
+
+1. **Next.js 16 Proxy Layer (`src/proxy.ts`):**
+   - Implements Auth0 session and edge routing using Next.js 16's `proxy` export (replacing deprecated `middleware.ts`).
+
+2. **Frontend UI Components (`src/components/` & `src/app/`):**
+   - Interactive components (`FridgeLocator.tsx`, `PhotoUpload.tsx`, `InventoryReview.tsx`, `AddFridgeLocation.tsx`) live in `src/components/` alongside `src/components/ui/` shadcn primitives.
+   - Client-side leaf components manage local state and interaction (drag/drop upload, review drawer, Leaflet map), while App Router pages (`page.tsx`, `scan/page.tsx`, `admin/page.tsx`) handle auth session gating and server context.
+
+3. **Operational Database & Vision Pipeline (`src/features/`):**
+   - `src/features/pantries/queries.ts` provides transactional database queries to update pantry capacity, write audit logs (`scan_audit_logs`), and synchronize inventory items (`pantry_inventory`).
+   - `src/features/vision/server/parse-fridge-image.ts` invokes Gemini 2.5 Flash enforcing structured Zod extraction output (`FridgeScanResponseSchema`).
+
+4. **Domain Types & Local State (`src/types/` & `src/lib/`):**
+   - `src/types/pantry.ts` defines database-aligned interfaces (`PantryLocation`, `InventoryItem`, `RestockAlertPayload`).
+   - `src/lib/inventory.ts`, `src/lib/fridge-locations.ts`, and `src/lib/inventory-submission.ts` provide reactive client stores, validation, and seed data (`SAMPLE_FRIDGES`).
 
 ## 4. Operational Guardrails for AI Agents
 **TypeScript Verification**: Always verify changes by running npm tsc --noEmit. Never mark a task as complete if type errors remain.
@@ -103,13 +129,13 @@ src/
 
 Keep data-fetching pages and API routes as Server Components.
 
-Push 'use client' strictly to interactive leaves: camera capture (camera-capture.tsx), interactive item edit drawers, and confirmation modals.
+Push 'use client' strictly to interactive leaves: camera capture (`PhotoUpload.tsx` / `camera-capture.tsx`), interactive item edit drawers (`InventoryReview.tsx`), and Leaflet map controls (`FridgeLocator.tsx`).
 
 Atomic Edits: Never rewrite entire files to add a single feature, field, or utility function. Make targeted modifications.
 
-Dependency Discipline: Reuse existing packages (lucide-react, zod, @google/genai). Do not introduce secondary HTTP clients (use native fetch) or state managers when React hooks suffice.
+Dependency Discipline: Reuse existing packages (lucide-react, zod, @google/genai, leaflet, react-leaflet). Do not introduce secondary HTTP clients (use native fetch) or state managers when React hooks suffice.
 
-Zero SQL Injection: All PostgreSQL queries inside src/features/*/server/ must use parameterized variables ($1, $2). Never concatenate raw user or LLM strings into SQL queries.
+Zero SQL Injection: All PostgreSQL queries inside src/features/*/server/ or src/features/pantries/ must use parameterized variables ($1, $2). Never concatenate raw user or LLM strings into SQL queries.
 
 ## 5. Schemas & Data Contracts
 ### A. Gemini Vision Extraction Schema (src/features/vision/types.ts)
@@ -202,8 +228,8 @@ When capacity_pct < 20 or critical staples (canned_goods, prepared_meals) reach 
 }
 ```
 ## 7. Fast Mock Development Strategy
-If credentials for Tiger Data, Gemini, or n8n are pending setup during the initial sprint hours, develop against src/lib/mocks/:
+If credentials for Tiger Data, Gemini, or n8n are pending setup during the initial sprint hours, develop against mock datasets and local helpers:
 
-src/lib/mocks/sample-pantries.ts: Contains real Vancouver community fridge coordinate points (e.g., Mount Pleasant Fridge at 7th & Quebec, Downtown Eastside Kitchen Tables, Commercial Drive Community Hub).
-
-src/lib/mocks/sample-scan-result.ts: Provides pre-baked Gemini responses returning 8–12 realistic items across different categories, enabling complete UI development of the review drawer and inventory views before touching the live camera or external APIs.
+- **`src/lib/inventory.ts` (`SAMPLE_FRIDGES`)**: Contains pre-configured Vancouver community fridge coordinate points (Strathcona, Mount Pleasant, Kitsilano, Commercial Drive) for immediate Leaflet map rendering. (To be extracted into `src/lib/mocks/sample-pantries.ts`).
+- **`src/lib/mocks/sample-scan-result.ts` & `fridge_test_1.jpg`**: Provides realistic pre-baked Gemini responses across categories alongside sample imagery, enabling complete UI development of the review drawer and inventory views without live API calls.
+- **`src/lib/inventory-submission.ts`**: Provides validation (`validReviewItems`) and mock proposal generators for offline review testing.
