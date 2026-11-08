@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  getPantryAlertContext,
   getPantryInventory,
   commitScanResult,
 } from "@/features/pantries/queries";
 import { FridgeScanResponseSchema } from "@/features/vision/types";
+import { auth0 } from "@/lib/auth0";
+import { checkAndTriggerRestockAlert } from "@/features/alerts/server/check-and-trigger-alert";
 
 // GET pantry inventory
 export async function GET(
@@ -29,32 +32,35 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await auth0.getSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await req.json();
     const validatedScan = FridgeScanResponseSchema.parse(body.scan);
 
     await commitScanResult(id, validatedScan);
 
-    // Step 4 trigger: Check for low-capacity alert to dispatch to n8n
-    if (
-      validatedScan.capacityEstimatePct <= 20 &&
-      process.env.N8N_RESTOCK_WEBHOOK_URL
-    ) {
-      fetch(process.env.N8N_RESTOCK_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event: "PANTRY_LOW_STOCK",
-          pantryId: id,
-          currentCapacityPct: validatedScan.capacityEstimatePct,
-          timestamp: new Date().toISOString(),
-        }),
-      }).catch((e) =>
-        console.warn("n8n webhook dispatch non-blocking error:", e),
-      );
+    const pantry = await getPantryAlertContext(id);
+    if (!pantry) {
+      return NextResponse.json({ error: "Pantry not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    // Evaluate and dispatch once, using only the volunteer-confirmed data that was committed.
+    const restockAlertDelivered = await checkAndTriggerRestockAlert({
+      pantryId: pantry.id,
+      pantryName: pantry.name,
+      address: pantry.address,
+      capacityPct: validatedScan.capacityEstimatePct,
+      items: validatedScan.items.filter((item) => !item.needsRemoval),
+    });
+
+    return NextResponse.json(
+      { success: true, restockAlertDelivered },
+      { status: 200 },
+    );
   } catch (err: unknown) {
     console.error("Scan commit error:", err);
     const message =

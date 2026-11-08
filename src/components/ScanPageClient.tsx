@@ -203,7 +203,6 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
           unit: "units",
           isPerishable: i.perishability === "high",
           needsRemoval: false,
-          notes: null, // explicit null matches schema
         })),
       };
 
