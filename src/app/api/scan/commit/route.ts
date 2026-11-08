@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     }
 
     await commitScanResult(pantryId, validatedScan, {
-      scannedByEmail: session?.user?.email ?? "anonymous_volunteer@pantrypulse.org",
+      scannedByEmail: session?.user?.email ?? "anonymous_volunteer@sharetheloaf.org",
       imageUrl: typeof imageUrl === "string" ? imageUrl : undefined,
     });
 
