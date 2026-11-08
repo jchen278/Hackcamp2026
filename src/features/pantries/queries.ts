@@ -15,11 +15,11 @@ export interface LiveFridge {
     name: string;
     category: string;
     quantity: number;
-    unit?: string;
+    unit?: string | null;
   }>;
 }
 
-// 1. Fetch all pantry locations (Fixed table name: pantry_locations)
+// 1. Fetch all pantries
 export async function getPantries(): Promise<PantryLocation[]> {
   const result = await query<PantryLocation>(`
     SELECT 
@@ -32,7 +32,7 @@ export async function getPantries(): Promise<PantryLocation[]> {
       capacity_pct AS "capacityPct", 
       cleanliness, 
       last_scanned_at AS "lastScannedAt"
-    FROM pantry_locations
+    FROM pantries
     ORDER BY name ASC;
   `);
   return result.rows;
@@ -60,14 +60,13 @@ export async function getPantryInventory(pantryId: string): Promise<InventoryIte
   return result.rows;
 }
 
-// 3. Fetch all fridges with nested live inventory for the Home Page & Map
+// 3. Fetch all pantries with live shelf inventory for Home & Map preview
 export async function getFridgesWithInventory(): Promise<LiveFridge[]> {
   const result = await query<any>(`
     SELECT 
       p.id,
       p.name,
       p.address,
-      p.neighbourhood,
       p.latitude,
       p.longitude,
       p.capacity_pct,
@@ -83,7 +82,7 @@ export async function getFridgesWithInventory(): Promise<LiveFridge[]> {
         ) FILTER (WHERE i.id IS NOT NULL),
         '[]'
       ) AS inventory
-    FROM pantry_locations p
+    FROM pantries p
     LEFT JOIN pantry_inventory i ON p.id = i.pantry_id
     GROUP BY p.id
     ORDER BY p.name ASC;
@@ -93,7 +92,7 @@ export async function getFridgesWithInventory(): Promise<LiveFridge[]> {
     id: row.id,
     name: row.name,
     address: row.address,
-    neighbourhood: row.neighbourhood,
+    neighbourhood: null,
     coordinates:
       row.latitude && row.longitude
         ? [parseFloat(row.latitude), parseFloat(row.longitude)]
@@ -116,10 +115,10 @@ export async function commitScanResult(
   try {
     await client.query("BEGIN");
 
-    // A. Update current capacity and cleanliness on pantry_locations
+    // A. Update current capacity and cleanliness on the pantry
     await client.query(
       `
-      UPDATE pantry_locations
+      UPDATE pantries
       SET 
         capacity_pct = $1,
         cleanliness = $2,
@@ -129,7 +128,7 @@ export async function commitScanResult(
       [scan.capacityEstimatePct, scan.cleanlinessScore, pantryId]
     );
 
-    // B. Write to scan_audit_logs matching teammate's schema
+    // B. Write to scan_audit_logs
     await client.query(
       `
       INSERT INTO scan_audit_logs (
@@ -153,7 +152,6 @@ export async function commitScanResult(
     await client.query(`DELETE FROM pantry_inventory WHERE pantry_id = $1;`, [pantryId]);
 
     for (const item of scan.items) {
-      // Exclude spoiled/unsuitable items flagged by Gemini
       if (item.needsRemoval) continue;
 
       await client.query(
