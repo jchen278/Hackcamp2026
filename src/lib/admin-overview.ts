@@ -13,11 +13,11 @@ export interface AdminMetrics {
 export function getAdminMetrics(
   fridges: Fridge[],
   submissions: PendingInventorySubmission[],
-  now: Date = new Date()
+  now: Date = new Date(),
 ): AdminMetrics {
   const totalFridges = fridges.length;
   const needsRestocking = fridges.filter(
-    (f) => f.status === "Nearly empty" || f.status === "Running low"
+    (f) => f.status === "Nearly empty" || f.status === "Running low",
   ).length;
 
   let lowStockItems = 0;
@@ -29,7 +29,11 @@ export function getAdminMetrics(
     }
   }
 
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfDay = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
   const updatesToday = submissions.filter((s) => {
     const time = new Date(s.submittedAt).getTime();
     return !Number.isNaN(time) && time >= startOfDay;

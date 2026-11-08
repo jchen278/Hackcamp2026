@@ -7,6 +7,9 @@ export async function GET() {
     return NextResponse.json({ data: pantries }, { status: 200 });
   } catch (err: unknown) {
     console.error("GET /api/pantries failed:", err);
-    return NextResponse.json({ error: "Failed to fetch pantries" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch pantries" },
+      { status: 500 },
+    );
   }
 }

@@ -117,7 +117,11 @@
   --sidebar-accent-foreground: oklch(0.3 0.06 150);
   --sidebar-border: oklch(0.89 0.025 110);
   --sidebar-ring: oklch(0.55 0.09 150);
-  --gradient-hero: linear-gradient(135deg, oklch(0.42 0.09 150), oklch(0.55 0.08 145));
+  --gradient-hero: linear-gradient(
+    135deg,
+    oklch(0.42 0.09 150),
+    oklch(0.55 0.08 145)
+  );
   --map-land: oklch(0.93 0.03 120);
   --map-road: oklch(0.99 0.008 90);
   --map-water: oklch(0.86 0.04 210);
@@ -136,14 +140,38 @@
 }
 
 @layer base {
-  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
 }
-@utility bg-hero { background-image: var(--gradient-hero); }
+@utility bg-hero {
+  background-image: var(--gradient-hero);
+}
 
-.fridge-map { font-family: var(--font-sans); background: var(--map-land); }
-.fridge-map .fridge-map-marker { stroke: var(--card); fill: var(--primary); cursor: pointer; }
+.fridge-map {
+  font-family: var(--font-sans);
+  background: var(--map-land);
+}
+.fridge-map .fridge-map-marker {
+  stroke: var(--card);
+  fill: var(--primary);
+  cursor: pointer;
+}
 .fridge-map .leaflet-control-zoom a,
 .fridge-map .leaflet-control-attribution,
-.fridge-map .leaflet-tooltip { background: var(--card); color: var(--foreground); border-color: var(--border); }
-.fridge-map .leaflet-control-attribution a { color: var(--primary); }
-.fridge-map .leaflet-control-zoom a { width: 40px; height: 40px; line-height: 40px; }
+.fridge-map .leaflet-tooltip {
+  background: var(--card);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+.fridge-map .leaflet-control-attribution a {
+  color: var(--primary);
+}
+.fridge-map .leaflet-control-zoom a {
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+}

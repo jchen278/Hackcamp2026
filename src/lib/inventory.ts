@@ -47,7 +47,12 @@ export interface UpdateRecord {
   submittedBy: string;
   submittedAt: string;
   photoName: string;
-  items: { name: string; category: Category; quantity: number; isNew: boolean }[];
+  items: {
+    name: string;
+    category: Category;
+    quantity: number;
+    isNew: boolean;
+  }[];
 }
 
 export interface Fridge {
@@ -121,72 +126,3 @@ export function applyConfirmedUpdate(
 
   return { ...fridge, inventory, history: [...fridge.history, record] };
 }
-
-/** Simulated Gemini recognition. Replace with a server call later; same return shape. */
-export async function recognizeFridgePhoto(_file?: File): Promise<DetectedItem[]> {
-  void _file;
-  await new Promise((r) => setTimeout(r, 2200));
-  const sample: Omit<DetectedItem, "id" | "source">[] = [
-    { name: "Apples", category: "Produce", quantity: 12, perishability: "medium", confidence: 0.94 },
-    { name: "Milk (1L)", category: "Dairy", quantity: 3, perishability: "high", confidence: 0.88 },
-    { name: "Sliced bread", category: "Bakery", quantity: 2, perishability: "medium", confidence: 0.81 },
-    { name: "Canned beans", category: "Pantry Staples", quantity: 6, perishability: "low", confidence: 0.9 },
-    { name: "Yogurt cups", category: "Dairy", quantity: 8, perishability: "high", confidence: 0.67 },
-    { name: "Carrots", category: "Produce", quantity: 1, perishability: "medium", confidence: 0.52 },
-  ];
-  return sample.map((s, i) => ({ ...s, id: `ai-${i}`, source: "ai" }));
-}
-
-const now = "2026-11-06T18:20:00.000Z";
-export const SAMPLE_FRIDGES: Fridge[] = [
-  {
-    id: "f1",
-    name: "Strathcona Community Fridge",
-    address: "601 Keefer St",
-    neighbourhood: "Strathcona",
-    status: "Running low",
-    map: { x: 62, y: 38 },
-    coordinates: { lat: 49.2795, lng: -123.0910 },
-    inventory: [
-      { name: "Apples", category: "Produce", quantity: 4, perishability: "medium", updatedAt: now },
-      { name: "Rice (1kg)", category: "Pantry Staples", quantity: 5, perishability: "low", updatedAt: now },
-    ],
-    history: [],
-  },
-  {
-    id: "f2",
-    name: "Mount Pleasant Free Fridge",
-    address: "2780 Main St",
-    neighbourhood: "Mount Pleasant",
-    status: "Nearly empty",
-    map: { x: 48, y: 62 },
-    coordinates: { lat: 49.2606, lng: -123.1008 },
-    inventory: [{ name: "Milk (1L)", category: "Dairy", quantity: 1, perishability: "high", updatedAt: now }],
-    history: [],
-  },
-  {
-    id: "f3",
-    name: "Kitsilano Neighbour Fridge",
-    address: "2305 W 7th Ave",
-    neighbourhood: "Kitsilano",
-    status: "Well stocked",
-    map: { x: 22, y: 55 },
-    coordinates: { lat: 49.2655, lng: -123.1587 },
-    inventory: [
-      { name: "Sliced bread", category: "Bakery", quantity: 6, perishability: "medium", updatedAt: now },
-      { name: "Pasta", category: "Pantry Staples", quantity: 10, perishability: "low", updatedAt: now },
-    ],
-    history: [],
-  },
-  {
-    id: "f4",
-    name: "Commercial Drive Fridge",
-    address: "1655 Commercial Dr",
-    neighbourhood: "Grandview–Woodland",
-    status: "Running low",
-    map: { x: 78, y: 52 },
-    coordinates: { lat: 49.2698, lng: -123.0696 },
-    inventory: [],
-    history: [],
-  },
-];

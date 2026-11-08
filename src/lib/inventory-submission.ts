@@ -13,9 +13,16 @@ export interface PendingInventorySubmission {
 
 export function validReviewItems(items: DetectedItem[]) {
   const names = items.map((item) => item.name.trim().toLowerCase());
-  return items.length > 0 && new Set(names).size === names.length && items.every((item) =>
-    item.name.trim().length > 0 && Number.isInteger(item.quantity) && item.quantity >= 0 &&
-    CATEGORIES.includes(item.category),
+  return (
+    items.length > 0 &&
+    new Set(names).size === names.length &&
+    items.every(
+      (item) =>
+        item.name.trim().length > 0 &&
+        Number.isInteger(item.quantity) &&
+        item.quantity >= 0 &&
+        CATEGORIES.includes(item.category),
+    )
   );
 }
 
@@ -28,8 +35,12 @@ export function createPendingSubmission(
   submittedAt: string,
   photoName: string,
 ): PendingInventorySubmission {
-  if (!confirmed) throw new Error("Please confirm the reviewed inventory first.");
-  if (!validReviewItems(items)) throw new Error("Use unique item names and whole quantities of zero or more.");
+  if (!confirmed)
+    throw new Error("Please confirm the reviewed inventory first.");
+  if (!validReviewItems(items))
+    throw new Error(
+      "Use unique item names and whole quantities of zero or more.",
+    );
   if (!submittedBy.trim()) throw new Error("Please log in before submitting.");
   return {
     id: `proposal-${fridge.id}-${submittedAt}`,

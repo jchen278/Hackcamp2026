@@ -6,7 +6,10 @@ import { AdminPageClient } from "@/components/AdminPageClient";
 async function AdminContent() {
   const session = await auth0.getSession();
 
-  console.log("--> AUTH0 SESSION USER:", JSON.stringify(session?.user, null, 2));
+  console.log(
+    "--> AUTH0 SESSION USER:",
+    JSON.stringify(session?.user, null, 2),
+  );
 
   if (!session?.user) {
     redirect("/auth/login?returnTo=/admin");
@@ -19,7 +22,9 @@ async function AdminContent() {
 
   if (!roles.includes("admin")) {
     const roleList = roles.length > 0 ? roles.join(", ") : "none";
-    console.warn(`--> ACCESS DENIED: User missing 'admin' role (Current role(s): [${roleList}]). Redirecting home.`);
+    console.warn(
+      `--> ACCESS DENIED: User missing 'admin' role (Current role(s): [${roleList}]). Redirecting home.`,
+    );
     redirect("/");
   }
 
@@ -37,7 +42,9 @@ export default function AdminPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-background">
-          <p className="text-sm text-muted-foreground animate-pulse">Loading admin dashboard...</p>
+          <p className="text-sm text-muted-foreground animate-pulse">
+            Loading admin dashboard...
+          </p>
         </div>
       }
     >

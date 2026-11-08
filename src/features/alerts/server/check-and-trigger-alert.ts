@@ -27,14 +27,18 @@ export async function checkAndTriggerRestockAlert({
   const isCapacityLow = capacityPct < 20;
 
   // Track zero/low counts for critical categories (e.g. canned_goods, prepared_meals, fresh_produce)
-  const criticalCategories = ["canned_goods", "prepared_meals", "fresh_produce"];
+  const criticalCategories = [
+    "canned_goods",
+    "prepared_meals",
+    "fresh_produce",
+  ];
   const urgentNeeds: Array<{ category: string; currentQuantity: number }> = [];
 
   for (const category of criticalCategories) {
     const matchingItems = items.filter((item) => item.category === category);
     const totalQty = matchingItems.reduce(
       (acc, item) => acc + (item.quantity ?? item.estimatedQuantity ?? 0),
-      0
+      0,
     );
 
     if (totalQty <= 1) {
@@ -51,7 +55,8 @@ export async function checkAndTriggerRestockAlert({
   // 2. Dispatch to internal restock endpoint (or directly via N8N_RESTOCK_WEBHOOK_URL)
   try {
     const webhookUrl =
-      process.env.N8N_RESTOCK_WEBHOOK_URL || "http://localhost:3000/api/webhook/restock";
+      process.env.N8N_RESTOCK_WEBHOOK_URL ||
+      "http://localhost:3000/api/webhook/restock";
 
     const payload = {
       event: "PANTRY_LOW_STOCK",
