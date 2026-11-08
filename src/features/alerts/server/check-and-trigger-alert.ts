@@ -13,8 +13,8 @@ interface CheckAlertParams {
 }
 
 /**
- * Evaluates pantry status and triggers the n8n restock alert webhook
- * if capacity is below 20% or critical categories have zero stock.
+ * Evaluates committed pantry status and triggers the n8n restock alert webhook
+ * if capacity is below 20% or a critical category has one or fewer units.
  */
 export async function checkAndTriggerRestockAlert({
   pantryId,

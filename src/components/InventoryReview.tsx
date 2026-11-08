@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ClipboardCheck, Plus, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CATEGORIES, type DetectedItem } from "@/lib/inventory";
-import { useFridgeLocations } from "@/lib/fridge-locations";
 import { AddFridgeLocation } from "@/components/AddFridgeLocation";
+import type { PantryLocation } from "@/types/pantry";
 import {
   createPendingSubmission,
   validReviewItems,
@@ -25,17 +26,22 @@ export function InventoryReview({
   submittedBy,
   photoName,
   onSubmitted,
+  pantries,
+  selectedPantryId,
+  onPantryChange,
 }: {
   items: DetectedItem[];
   onChange: (items: DetectedItem[]) => void;
   submittedBy: string;
   photoName: string;
   onSubmitted: (submission: PendingInventorySubmission) => void;
+  pantries: PantryLocation[];
+  selectedPantryId: string;
+  onPantryChange: (pantryId: string) => void;
 }) {
-  const [fridgeId, setFridgeId] = useState("");
+  const router = useRouter();
   const [confirmed, setConfirmed] = useState(false);
-  const fridges = useFridgeLocations();
-  const fridge = fridges.find((entry) => entry.id === fridgeId);
+  const pantry = pantries.find((entry) => entry.id === selectedPantryId);
   const valid = validReviewItems(items);
   const changeItems = (next: DetectedItem[]) => {
     setConfirmed(false);
@@ -58,32 +64,42 @@ export function InventoryReview({
           Fridge location
         </label>
         <Select
-          value={fridgeId}
+          value={selectedPantryId}
           onValueChange={(value) => {
-            setFridgeId(value);
+            onPantryChange(value);
             setConfirmed(false);
           }}
         >
-          <SelectTrigger aria-labelledby="review-fridge-label" className="h-12">
+          <SelectTrigger
+            aria-labelledby="review-fridge-label"
+            className="h-12"
+            disabled={pantries.length === 0}
+          >
             <SelectValue placeholder="Select a fridge" />
           </SelectTrigger>
           <SelectContent>
-            {fridges.map((entry) => (
+            {pantries.map((entry) => (
               <SelectItem key={entry.id} value={entry.id}>
                 {entry.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {fridge && (
+        {pantry && (
           <p className="text-sm text-muted-foreground">
-            {fridge.address} · {fridge.neighbourhood}
+            {pantry.address}
+          </p>
+        )}
+        {pantries.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No fridge locations are currently available.
           </p>
         )}
         <AddFridgeLocation
           onAdded={(id) => {
-            setFridgeId(id);
+            onPantryChange(id);
             setConfirmed(false);
+            router.refresh();
           }}
         />
       </div>
@@ -211,19 +227,19 @@ export function InventoryReview({
             selected fridge.
           </label>
         </div>
-        {!fridge && (
+        {!pantry && (
           <p className="text-sm text-muted-foreground">
             Select a fridge location above before submitting.
           </p>
         )}
         <Button
           className="min-h-12 w-full whitespace-normal px-4"
-          disabled={!confirmed || !valid || !fridge}
+          disabled={!confirmed || !valid || !pantry}
           onClick={() => {
-            if (!fridge) return;
+            if (!pantry) return;
             onSubmitted(
               createPendingSubmission(
-                fridge,
+                pantry,
                 items,
                 confirmed,
                 submittedBy,

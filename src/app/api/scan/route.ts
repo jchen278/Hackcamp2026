@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseFridgeImage } from "@/features/vision/server/parse-fridge-image";
 import { auth0 } from "@/lib/auth0";
-import { checkAndTriggerRestockAlert } from "@/features/alerts/server/check-and-trigger-alert";
 
 export const maxDuration = 30; // 30-second timeout for image processing
 

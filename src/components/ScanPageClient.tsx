@@ -203,7 +203,6 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
           unit: "units",
           isPerishable: i.perishability === "high",
           needsRemoval: false,
-          notes: null, // explicit null matches schema
         })),
       };
 
@@ -391,6 +390,9 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
             onChange={setItems}
             submittedBy={displayName}
             photoName={file.name}
+            pantries={pantries}
+            selectedPantryId={selectedPantryId}
+            onPantryChange={setSelectedPantryId}
             onSubmitted={handleAuditSubmit}
           />
         )}
