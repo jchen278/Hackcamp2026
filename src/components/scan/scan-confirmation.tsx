@@ -19,7 +19,7 @@ export function ScanConfirmation({
         />
         <div>
           <p className="font-semibold text-foreground">
-            Scan complete · +{pointsAwarded} PantryPulse Points
+            Scan complete · +{pointsAwarded} SpreadTheLoaf Points
           </p>
           <p className="text-sm text-muted-foreground">
             Saved to Auth0 · Balance: {totalPoints}
@@ -28,7 +28,7 @@ export function ScanConfirmation({
       </div>
       <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
         <Sparkles className="h-4 w-4" aria-hidden="true" />
-        PantryPulse Points
+        SpreadTheLoaf Points
       </span>
     </section>
   );

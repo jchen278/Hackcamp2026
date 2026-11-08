@@ -24,7 +24,7 @@ export function SubmittedPageClient() {
     <div className="min-h-screen bg-background px-4 py-16 font-sans sm:py-24">
       <main className="mx-auto max-w-lg space-y-6 text-center">
         <p className="font-display text-xl font-bold text-primary">
-          PantryPulse
+          SpreadTheLoaf
         </p>
         <CheckCircle2
           className="mx-auto h-16 w-16 text-primary"
