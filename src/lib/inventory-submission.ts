@@ -1,4 +1,4 @@
-import { CATEGORIES, type DetectedItem, type Fridge } from "@/lib/inventory";
+import { CATEGORIES, type DetectedItem } from "@/lib/inventory";
 
 export interface PendingInventorySubmission {
   id: string;
@@ -28,7 +28,7 @@ export function validReviewItems(items: DetectedItem[]) {
 
 /** A mock proposal only: never applies changes to the fridge's public inventory. */
 export function createPendingSubmission(
-  fridge: Fridge,
+  fridge: { id: string; name: string },
   items: DetectedItem[],
   confirmed: boolean,
   submittedBy: string,
