@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseFridgeImage } from "@/features/vision/server/parse-fridge-image";
 import { auth0 } from "@/lib/auth0";
 
+
 export const maxDuration = 30; // 30-second timeout for image processing
 
 export async function POST(req: NextRequest) {
@@ -40,19 +41,8 @@ export async function POST(req: NextRequest) {
       file.type || "image/jpeg",
     );
 
-    // 4. Check low-stock thresholds & trigger n8n restock alert if needed
-    await checkAndTriggerRestockAlert({
-      pantryId:
-        (formData.get("pantryId") as string),
-      pantryName:
-        (formData.get("pantryName") as string),
-      address:
-        (formData.get("address") as string),
-      capacityPct: extraction.capacityEstimatePct,
-      items: extraction.items,
-    });
-
-    // 5. Return scan result tagged with volunteer email
+    // Return extraction only. Restock checks run after the volunteer confirms
+    // and commits the reviewed scan in /api/pantries/[id].
     return NextResponse.json(
       {
         data: extraction,
