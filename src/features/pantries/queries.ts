@@ -190,3 +190,45 @@ export async function commitScanResult(
     client.release();
   }
 }
+
+export interface CreatePantryInput {
+  id?: string;
+  name: string;
+  address: string;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export async function createPantry(input: CreatePantryInput): Promise<PantryLocation> {
+  const { id = crypto.randomUUID(), name, address, latitude = null, longitude = null } = input;
+
+  const result = await query<PantryLocation>(
+    `
+    INSERT INTO pantries (
+      id,
+      name,
+      address,
+      latitude,
+      longitude,
+      status,
+      capacity_pct,
+      cleanliness,
+      last_scanned_at
+    )
+    VALUES ($1, $2, $3, $4, $5, 'active', 0, 'clean', NOW())
+    RETURNING 
+      id,
+      name,
+      address,
+      latitude,
+      longitude,
+      status,
+      capacity_pct AS "capacityPct",
+      cleanliness,
+      last_scanned_at AS "lastScannedAt";
+    `,
+    [id, name.trim(), address.trim(), latitude, longitude]
+  );
+
+  return result.rows[0];
+}

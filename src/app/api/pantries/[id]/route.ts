@@ -5,6 +5,7 @@ import {
 } from "@/features/pantries/queries";
 import { FridgeScanResponseSchema } from "@/features/vision/types";
 
+// GET pantry inventory
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
