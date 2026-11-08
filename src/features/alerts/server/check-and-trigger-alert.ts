@@ -74,6 +74,12 @@ export async function checkAndTriggerRestockAlert({
       body: JSON.stringify(payload),
     });
 
+    if (!response.ok) {
+      console.error(
+        `Restock alert delivery failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
     return response.ok;
   } catch (error) {
     console.error("Error triggering restock alert:", error);
