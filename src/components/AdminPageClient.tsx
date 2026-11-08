@@ -2,6 +2,8 @@
 
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import type { LiveFridge } from "@/features/pantries/queries";
+import type { Fridge } from "@/lib/inventory";
 import {
   Refrigerator,
   PackageX,
@@ -12,7 +14,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useFridgeLocations } from "@/lib/fridge-locations";
 import {
   DEMO_LOW_STOCK_THRESHOLD,
   getAdminMetrics,
@@ -27,8 +28,44 @@ interface UserProfile {
   email?: string | null;
 }
 
-export function AdminPageClient({ user }: { user: UserProfile }) {
-  const fridges = useFridgeLocations();
+function toFridgeStatus(
+  capacityPct?: number,
+): Fridge["status"] {
+  if (!capacityPct || capacityPct < 25) return "Nearly empty";
+  if (capacityPct < 65) return "Running low";
+  return "Well stocked";
+}
+
+function toFridge(fridge: LiveFridge): Fridge {
+  return {
+    id: fridge.id,
+    name: fridge.name,
+    address: fridge.address,
+    neighbourhood: fridge.neighbourhood ?? "",
+    status: toFridgeStatus(fridge.capacityPct),
+    map: { x: 50, y: 50 },
+    coordinates: fridge.coordinates
+      ? { lat: fridge.coordinates[0], lng: fridge.coordinates[1] }
+      : undefined,
+    history: [],
+    inventory: fridge.inventory.map((item) => ({
+      name: item.name,
+      category: item.category as Fridge["inventory"][number]["category"],
+      quantity: item.quantity,
+      unit: item.unit,
+      updatedAt: "",
+    })),
+  };
+}
+
+export function AdminPageClient({
+  user,
+  initialFridges,
+}: {
+  user: UserProfile;
+  initialFridges: LiveFridge[];
+}) {
+  const fridges = initialFridges.map(toFridge);
   const mounted = useSyncExternalStore(
     emptySubscribe,
     () => true,

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { auth0 } from "@/lib/auth0";
+import { getFridgesWithInventory } from "@/features/pantries/queries";
 import { AdminPageClient } from "@/components/AdminPageClient";
 
 async function AdminContent() {
@@ -64,8 +65,9 @@ async function AdminContent() {
     name: session.user.name ?? null,
     email: session.user.email ?? null,
   };
+  const fridges = await getFridgesWithInventory();
 
-  return <AdminPageClient user={user} />;
+  return <AdminPageClient user={user} initialFridges={fridges} />;
 }
 
 export default function AdminPage() {

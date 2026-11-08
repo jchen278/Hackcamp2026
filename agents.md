@@ -101,7 +101,7 @@ src/
 │   ├── db.ts                         # Tiger Data PostgreSQL connection pool singleton
 │   ├── fridge-locations.ts           # Client reactive store for fridge locations & user-drafted locations
 │   ├── inventory-submission.ts       # Review validation & pending submission generator
-│   ├── inventory.ts                  # Categories, SAMPLE_FRIDGES seed data, domain item & fridge types
+│   ├── inventory.ts                  # Categories and domain item & fridge types
 │   └── utils.ts                      # cn() class helper & relative timestamp formatters
 ├── types/
 │   └── pantry.ts                     # Shared domain models (PantryLocation, InventoryItem, RestockAlertPayload)
@@ -119,12 +119,12 @@ src/
    - Client-side leaf components manage local state and interaction (drag/drop upload, review drawer, Leaflet map), while App Router pages (`page.tsx`, `scan/page.tsx`, `admin/page.tsx`) handle auth session gating and server context.
 
 3. **Operational Database & Vision Pipeline (`src/features/`):**
-   - `src/features/pantries/queries.ts` provides transactional database queries to update pantry capacity, write audit logs (`scan_audit_logs`), and synchronize inventory items (`pantry_inventory`).
+   - `src/features/pantries/queries.ts` provides transactional database queries to update pantry capacity, write audit logs (`scan_audit_logs`), synchronize inventory items (`pantry_inventory`), and fetch live pantry data for the home and admin pages.
    - `src/features/vision/server/parse-fridge-image.ts` invokes Gemini 2.5 Flash enforcing structured Zod extraction output (`FridgeScanResponseSchema`).
 
 4. **Domain Types & Local State (`src/types/` & `src/lib/`):**
    - `src/types/pantry.ts` defines database-aligned interfaces (`PantryLocation`, `InventoryItem`, `RestockAlertPayload`).
-   - `src/lib/inventory.ts`, `src/lib/fridge-locations.ts`, and `src/lib/inventory-submission.ts` provide reactive client stores, validation, and seed data (`SAMPLE_FRIDGES`).
+   - `src/lib/inventory.ts`, `src/lib/fridge-locations.ts`, and `src/lib/inventory-submission.ts` provide domain types, draft-location state, validation, and submission helpers. They do not seed pantry data; the home and admin pages read pantry records from Tiger Data.
 
 ## 4. Operational Guardrails for AI Agents
 
@@ -259,7 +259,7 @@ When capacity_pct < 20 or critical staples (canned_goods, prepared_meals) reach 
 
 If credentials for Tiger Data, Gemini, or n8n are pending setup during the initial sprint hours, develop against mock datasets and local helpers:
 
-- **`src/lib/inventory.ts` (`SAMPLE_FRIDGES`)**: Contains pre-configured Vancouver community fridge coordinate points (Strathcona, Mount Pleasant, Kitsilano, Commercial Drive) for immediate Leaflet map rendering. (To be extracted into `src/lib/mocks/sample-pantries.ts`).
+- **Pantry data**: The Next.js home and admin pages load pantry records from Tiger Data through `src/features/pantries/queries.ts`. Do not add demo pantry seed data to `src/lib/inventory.ts`; use an explicit mock fixture only for isolated offline UI work.
 - **`src/lib/mocks/sample-scan-result.ts` & `fridge_test_1.jpg`**: Provides realistic pre-baked Gemini responses across categories alongside sample imagery, enabling complete UI development of the review drawer and inventory views without live API calls.
 - **`src/lib/inventory-submission.ts`**: Provides validation (`validReviewItems`) and mock proposal generators for offline review testing.
 
