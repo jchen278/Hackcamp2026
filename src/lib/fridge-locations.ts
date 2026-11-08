@@ -25,3 +25,5 @@ export function addLocation(draft: LocationDraft) {
 export function useFridgeLocations() {
   return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; }, getLocations, () => SAMPLE_FRIDGES);
 }
+
+export { Fridge };

@@ -1,9 +1,12 @@
-import { Suspense } from "react";
 import { auth0 } from "@/lib/auth0";
+import { getFridgesWithInventory } from "@/features/pantries/queries";
 import { HomePageClient } from "@/components/HomePageClient";
 
-async function HomeContent() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
   const session = await auth0.getSession();
+  const fridges = await getFridgesWithInventory();
 
   const user = session?.user
     ? {
@@ -12,19 +15,5 @@ async function HomeContent() {
       }
     : null;
 
-  return <HomePageClient user={user} />;
-}
-
-export default function Home() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <p className="text-sm text-muted-foreground animate-pulse">Loading PantryPulse...</p>
-        </div>
-      }
-    >
-      <HomeContent />
-    </Suspense>
-  );
+  return <HomePageClient user={user} initialFridges={fridges} />;
 }
