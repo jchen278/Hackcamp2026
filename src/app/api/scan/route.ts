@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseFridgeImage } from "@/features/vision/server/parse-fridge-image";
 import { auth0 } from "@/lib/auth0";
+import { getUserPoints, updateUserPoints } from "@/lib/auth0-management";
+
+// export const maxDuration = 30; // 30-second timeout for image processing
 import { checkAndTriggerRestockAlert } from "@/features/alerts/server/check-and-trigger-alert";
 import { uploadAuditImage } from "@/lib/vultr-storage";
 
@@ -51,14 +54,35 @@ export async function POST(req: NextRequest) {
     // 4. Extract inventory with Gemini
     const extraction = await parseFridgeImage(buffer, mimeType);
 
-    // Return extraction only. Restock checks run after the volunteer confirms
-    // and commits the reviewed scan in /api/pantries/[id].
+    let pointsAwarded = 0;
+    let totalPoints: number | null = null;
+    let pointsStatus: "awarded" | "failed" = "failed";
+
+    try {
+      const userId = session.user.sub;
+      if (!userId) throw new Error("Authenticated Auth0 user ID is missing.");
+
+      const currentPoints = await getUserPoints(userId);
+      totalPoints = currentPoints + 100;
+      await updateUserPoints(userId, totalPoints);
+      pointsAwarded = 100;
+      pointsStatus = "awarded";
+    } catch (pointsError) {
+      // A Management API failure should not discard a successfully parsed scan.
+      console.error("Auth0 points update failed:", pointsError);
+    }
+
+    // Restock checks still wait until the volunteer confirms and commits the
+    // reviewed scan in /api/pantries/[id].
     return NextResponse.json(
       {
         data: extraction,
         imageUrl,
         scannedBy: volunteerEmail,
         timestamp: new Date().toISOString(),
+        pointsAwarded,
+        totalPoints,
+        pointsStatus,
       },
       { status: 200 }
     );

@@ -17,6 +17,7 @@ import { type DetectedItem, type Category } from "@/lib/inventory";
 import { cn } from "@/lib/utils";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { InventoryReview } from "@/components/InventoryReview";
+import { ScanConfirmation } from "@/components/scan/scan-confirmation";
 import { Button } from "@/components/ui/button";
 import { setMockSubmission } from "@/lib/mock-submission";
 import type { PantryLocation } from "@/types/pantry";
@@ -95,7 +96,13 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<DetectedItem[] | null>(null);
   const [rawScan, setRawScan] = useState<FridgeScanResponse | null>(null);
-  const [vultrImageUrl, setVultrImageUrl] = useState<string | null>(null); // Stored Vultr CDN link
+
+  // Merged states: Both points tracking & Vultr CDN image URL
+  const [scanPointsAwarded, setScanPointsAwarded] = useState(0);
+  const [pointsBalance, setPointsBalance] = useState<number | null>(null);
+  const [pointsUpdateFailed, setPointsUpdateFailed] = useState(false);
+  const [vultrImageUrl, setVultrImageUrl] = useState<string | null>(null);
+
   const [analyzing, setAnalyzing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reviewKey, setReviewKey] = useState(0);
@@ -103,6 +110,34 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
 
   const displayName =
     user.name || (user.email ? user.email.split("@")[0] : "Volunteer");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void fetch("/api/points")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load points.");
+        const result: unknown = await response.json();
+        if (
+          typeof result === "object" &&
+          result !== null &&
+          "points" in result &&
+          typeof result.points === "number" &&
+          Number.isSafeInteger(result.points) &&
+          result.points >= 0 &&
+          !cancelled
+        ) {
+          setPointsBalance(result.points);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPointsBalance(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onFile = async (f: File | null) => {
     if (f && !ACCEPTED.includes(f.type)) {
@@ -116,6 +151,8 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
     setAt(f ? new Date() : null);
     setItems(null);
     setRawScan(null);
+    setScanPointsAwarded(0);
+    setPointsUpdateFailed(false);
     setVultrImageUrl(null);
 
     const id = ++runId.current;
@@ -149,36 +186,59 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
 
       if (id !== runId.current) return;
 
-      if (res.ok) {
-        const json = await res.json();
-        const scanData: FridgeScanResponse = json.data;
-        setRawScan(scanData);
+      const json = await res.json();
+      if (!res.ok) {
+        setError(
+          typeof json.error === "string"
+            ? json.error
+            : "Could not analyze this photo. Please try again."
+        );
+        setAnalyzing(false);
+        return;
+      }
 
-        // Save Vultr image URL returned by /api/scan
-        if (json.imageUrl) {
-          setVultrImageUrl(json.imageUrl);
-        }
+      // 1. Process Vultr Object Storage Image URL
+      if (json.imageUrl) {
+        setVultrImageUrl(json.imageUrl);
+      }
 
-        if (
-          scanData?.items &&
-          Array.isArray(scanData.items) &&
-          scanData.items.length > 0
-        ) {
-          const mapped: DetectedItem[] = scanData.items.map((it, idx) => ({
-            id: `ai-${idx}-${Date.now()}`,
-            name: it.name,
-            category: mapVisionCategoryToUi(it.category),
-            quantity: Number(it.estimatedQuantity) || 1,
-            perishability: it.isPerishable ? "high" : "low",
-            confidence: 0.95,
-            source: "ai" as const,
-          }));
-          setItems(mapped);
-          setAnalyzing(false);
-          return;
-        }
+      // 2. Process Points Awarded
+      const scanData: FridgeScanResponse = json.data;
+      setRawScan(scanData);
+      const pointsAwarded =
+        typeof json.pointsAwarded === "number" &&
+        Number.isSafeInteger(json.pointsAwarded) &&
+        json.pointsAwarded > 0
+          ? json.pointsAwarded
+          : 0;
+      setScanPointsAwarded(pointsAwarded);
+      setPointsUpdateFailed(json.pointsStatus === "failed");
+      if (
+        typeof json.totalPoints === "number" &&
+        Number.isSafeInteger(json.totalPoints) &&
+        json.totalPoints >= 0
+      ) {
+        setPointsBalance(json.totalPoints);
+      }
+
+      // 3. Process Detected Items
+      if (
+        scanData?.items &&
+        Array.isArray(scanData.items) &&
+        scanData.items.length > 0
+      ) {
+        const mapped: DetectedItem[] = scanData.items.map((it, idx) => ({
+          id: `ai-${idx}-${Date.now()}`,
+          name: it.name,
+          category: mapVisionCategoryToUi(it.category),
+          quantity: Number(it.estimatedQuantity) || 1,
+          perishability: it.isPerishable ? "high" : "low",
+          confidence: 0.95,
+          source: "ai" as const,
+        }));
+        setItems(mapped);
       } else {
-        setError("Failed to analyze fridge image. Please try another shot.");
+        setError("No food items were detected. Try a clearer photo of the fridge contents.");
       }
     } catch {
       if (id !== runId.current) return;
@@ -222,14 +282,13 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
       };
 
       // 3. Post to commit endpoint passing the Vultr CDN image URL & session
-      // (Using /api/scan/commit or /api/pantries/[id] depending on your route)
       const res = await fetch("/api/scan/commit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pantryId: targetPantryId,
           scan: payload,
-          imageUrl: vultrImageUrl, // <-- Vultr Object Storage public link
+          imageUrl: vultrImageUrl,
         }),
       });
 
@@ -257,6 +316,9 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
             <ArrowLeft className="h-4 w-4" /> Home
           </Link>
           <span className="flex items-center gap-3 text-sm">
+            <span className="rounded-full bg-secondary px-3 py-1 font-semibold text-secondary-foreground">
+              {pointsBalance === null ? "Points unavailable" : `${pointsBalance} points`}
+            </span>
             <span className="font-medium text-foreground">
               Hi, {displayName}
             </span>
@@ -392,6 +454,18 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
         )}
 
         {items && <Results items={items} />}
+
+        {scanPointsAwarded > 0 && (
+          <ScanConfirmation
+            pointsAwarded={scanPointsAwarded}
+            totalPoints={pointsBalance ?? 0}
+          />
+        )}
+        {pointsUpdateFailed && (
+          <p role="status" className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">
+            The scan completed, but points could not be saved to Auth0. Check the Management API configuration and permissions.
+          </p>
+        )}
 
         {items && file && (
           <InventoryReview
