@@ -2,6 +2,8 @@
 
 SpreadTheLoaf helps people find and support community fridges around Metro Vancouver. Volunteers can photograph a fridge, review the food items detected by AI, and submit an inventory update. The app brings fridge locations, current stock, and volunteer tools together in one place.
 
+*Read our Devpost [here](https://devpost.com/software/spreadtheloaf)!*
+
 ## What it does
 
 - Browse community fridge locations and their reported inventory.
