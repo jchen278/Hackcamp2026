@@ -135,7 +135,14 @@ export function HomePageClient({
             href="/"
             className="flex items-center gap-2 font-display text-xl font-bold text-primary"
           >
-            <Leaf className="h-5 w-5" />
+            <Image
+              src="/spreadtheloaf-bread.png"
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain"
+              aria-hidden="true"
+            />
             <span>SpreadTheLoaf</span>
           </Link>
 
@@ -501,7 +508,14 @@ export function HomePageClient({
           id="get-involved"
           className="mx-auto max-w-7xl px-5 py-16 text-center sm:px-8 sm:py-24"
         >
-          <Leaf className="mx-auto h-8 w-8 text-primary" />
+          <Image
+            src="/spreadtheloaf-bread.png"
+            alt=""
+            width={40}
+            height={40}
+            className="mx-auto h-10 w-10 object-contain"
+            aria-hidden="true"
+          />
           <p className="section-kicker mt-4">04 / Get involved</p>
           <h2 className="mt-3 text-3xl font-medium sm:text-5xl text-foreground">
             There’s a place
@@ -542,7 +556,14 @@ export function HomePageClient({
       <footer className="border-t border-primary/20 bg-card/60">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-8 sm:px-8">
           <div className="flex items-center gap-2">
-            <Leaf className="h-5 w-5 text-primary" />
+            <Image
+              src="/spreadtheloaf-bread.png"
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain"
+              aria-hidden="true"
+            />
             <span className="font-display text-xl font-bold text-primary">
               SpreadTheLoaf
             </span>
