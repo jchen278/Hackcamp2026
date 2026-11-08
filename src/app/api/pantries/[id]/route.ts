@@ -7,7 +7,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const items = await getPantryInventory(id);
     return NextResponse.json({ data: items }, { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("GET /api/pantries/[id] ERROR:", err);
     return NextResponse.json({ error: "Failed to fetch inventory" }, { status: 500 });
   }
@@ -37,8 +37,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     return NextResponse.json({ success: true }, { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Scan commit error:", err);
-    return NextResponse.json({ error: err.message || "Failed to commit scan" }, { status: 400 });
+    const message = err instanceof Error ? err.message : "Failed to commit scan";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

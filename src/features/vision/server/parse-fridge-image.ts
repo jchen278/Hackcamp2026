@@ -1,10 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { FridgeScanResponseSchema, type FridgeScanResponse } from "../types";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
-
 const SYSTEM_INSTRUCTION = `
 You are an expert civic food security assistant auditing community fridge and pantry shelves in Metro Vancouver.
 Analyze the image of the pantry/fridge interior and output a strict JSON object following this format:
@@ -64,7 +60,7 @@ export async function parseFridgeImage(
   try {
     // Primary: high-intelligence model
     response = await callModel("gemini-3.8-flash");
-  } catch (err: any) {
+  } catch {
     console.warn("gemini-3.8-flash busy (503/429), failing over to gemini-3.5-flash-lite...");
     // Instant fallback: high-availability model
     response = await callModel("gemini-3.5-flash-lite");

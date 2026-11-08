@@ -31,10 +31,11 @@ export async function POST(req: NextRequest) {
       { success: true, message: "Restock alert dispatched to n8n successfully" },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Restock webhook dispatch error:", error);
+    const message = error instanceof Error ? error.message : "Failed to dispatch restock alert";
     return NextResponse.json(
-      { error: error?.message || "Failed to dispatch restock alert" },
+      { error: message },
       { status: 500 }
     );
   }

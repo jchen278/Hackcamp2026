@@ -74,7 +74,7 @@ export function FridgePicker({
             </Button>
           </li>
         ))}
-        {list.length === 0 && <li className="p-3 text-sm text-muted-foreground">No fridges match "{q}".</li>}
+        {list.length === 0 && <li className="p-3 text-sm text-muted-foreground">No fridges match &quot;{q}&quot;.</li>}
       </ul>
     </div>
   );
@@ -98,8 +98,7 @@ export function MapPreview({
   useEffect(() => { select.current = onSelect; }, [onSelect]);
   useEffect(() => {
     let cancelled = false;
-    setReady(false);
-    setFailed(false);
+    const currentMarkers = markers.current;
     void import("leaflet").then((L) => {
       if (cancelled || !container.current) return;
       const instance = L.map(container.current, { scrollWheelZoom: false, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false }).setView([49.271, -123.113], 12);
@@ -117,7 +116,7 @@ export function MapPreview({
         tooltip.textContent = fridge.name;
         marker.bindTooltip(tooltip, { direction: "top" });
         marker.on("click", () => select.current(fridge.id));
-        markers.current.set(fridge.id, marker);
+        currentMarkers.set(fridge.id, marker);
       }
       const points: [number, number][] = fridges.flatMap((f) => f.coordinates ? [[f.coordinates.lat, f.coordinates.lng] as [number, number]] : []);
       if (points.length > 0) instance.fitBounds(points, { padding: [30, 30], maxZoom: 13 });
@@ -130,7 +129,7 @@ export function MapPreview({
       cancelled = true;
       map.current?.remove();
       map.current = null;
-      markers.current.clear();
+      currentMarkers.clear();
     };
   }, [fridges]);
   useEffect(() => {

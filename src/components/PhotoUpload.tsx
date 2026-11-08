@@ -27,6 +27,7 @@ export function PhotoUpload({
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={pick} />
       {preview ? (
         <div className="relative overflow-hidden rounded-2xl">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={preview} alt="Uploaded fridge" className="max-h-80 w-full object-cover" />
           {!disabled && (
             <div className="absolute right-3 top-3 flex gap-2">

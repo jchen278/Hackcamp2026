@@ -122,7 +122,8 @@ export function applyConfirmedUpdate(
 }
 
 /** Simulated Gemini recognition. Replace with a server call later; same return shape. */
-export async function recognizeFridgePhoto(_file: File): Promise<DetectedItem[]> {
+export async function recognizeFridgePhoto(_file?: File): Promise<DetectedItem[]> {
+  void _file;
   await new Promise((r) => setTimeout(r, 2200));
   const sample: Omit<DetectedItem, "id" | "source">[] = [
     { name: "Apples", category: "Produce", quantity: 12, perishability: "medium", confidence: 0.94 },
