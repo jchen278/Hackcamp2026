@@ -1,6 +1,7 @@
-import { auth0 } from "@/lib/auth0";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { auth0 } from "@/lib/auth0";
+import { AdminPageClient } from "@/components/AdminPageClient";
 
 async function AdminContent() {
   const session = await auth0.getSession();
@@ -9,20 +10,23 @@ async function AdminContent() {
     redirect("/auth/login?returnTo=/admin");
   }
 
-  return (
-    <main className="p-8">
-      <h1 className="text-2xl font-bold">Admin Inventory Controls</h1>
-      <p className="mt-2 text-sm text-gray-600">
-        Admin session: <strong>{session.user.email}</strong>
-      </p>
-      {/* Inventory threshold controls go here */}
-    </main>
-  );
+  const user = {
+    name: session.user.name ?? null,
+    email: session.user.email ?? null,
+  };
+
+  return <AdminPageClient user={user} />;
 }
 
 export default function AdminPage() {
   return (
-    <Suspense fallback={<p className="p-8">Loading admin panel...</p>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <p className="text-sm text-muted-foreground animate-pulse">Loading admin dashboard...</p>
+        </div>
+      }
+    >
       <AdminContent />
     </Suspense>
   );

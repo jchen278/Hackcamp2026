@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const pantries = await getPantries();
     return NextResponse.json({ data: pantries }, { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("GET /api/pantries failed:", err);
     return NextResponse.json({ error: "Failed to fetch pantries" }, { status: 500 });
   }

@@ -4,7 +4,7 @@ import { FridgeScanResponse } from "@/features/vision/types";
 
 // 1. Fetch all pantry locations
 export async function getPantries(): Promise<PantryLocation[]> {
-  const result = await query(`
+  const result = await query<PantryLocation>(`
     SELECT 
       id, 
       name, 
@@ -23,7 +23,7 @@ export async function getPantries(): Promise<PantryLocation[]> {
 
 // 2. Fetch inventory for a specific pantry
 export async function getPantryInventory(pantryId: string): Promise<InventoryItem[]> {
-  const result = await query(
+  const result = await query<InventoryItem>(
     `
     SELECT 
       id, 

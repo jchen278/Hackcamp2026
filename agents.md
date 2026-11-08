@@ -233,3 +233,13 @@ If credentials for Tiger Data, Gemini, or n8n are pending setup during the initi
 - **`src/lib/inventory.ts` (`SAMPLE_FRIDGES`)**: Contains pre-configured Vancouver community fridge coordinate points (Strathcona, Mount Pleasant, Kitsilano, Commercial Drive) for immediate Leaflet map rendering. (To be extracted into `src/lib/mocks/sample-pantries.ts`).
 - **`src/lib/mocks/sample-scan-result.ts` & `fridge_test_1.jpg`**: Provides realistic pre-baked Gemini responses across categories alongside sample imagery, enabling complete UI development of the review drawer and inventory views without live API calls.
 - **`src/lib/inventory-submission.ts`**: Provides validation (`validReviewItems`) and mock proposal generators for offline review testing.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

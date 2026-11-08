@@ -40,10 +40,11 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Scan route error:", error);
+    const message = error instanceof Error ? error.message : "Failed to process pantry snapshot";
     return NextResponse.json(
-      { error: error?.message || "Failed to process pantry snapshot" },
+      { error: message },
       { status: 500 }
     );
   }

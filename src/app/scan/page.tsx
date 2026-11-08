@@ -1,6 +1,7 @@
-import { auth0 } from "@/lib/auth0";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { auth0 } from "@/lib/auth0";
+import { ScanPageClient } from "@/components/ScanPageClient";
 
 async function ScanContent() {
   const session = await auth0.getSession();
@@ -9,20 +10,23 @@ async function ScanContent() {
     redirect("/auth/login?returnTo=/scan");
   }
 
-  return (
-    <main className="p-8">
-      <h1 className="text-2xl font-bold">Fridge Scanner</h1>
-      <p className="mt-2 text-sm text-gray-600">
-        Logged in as volunteer: <strong>{session.user.email}</strong>
-      </p>
-      {/* Camera capture component goes here */}
-    </main>
-  );
+  const user = {
+    name: session.user.name ?? null,
+    email: session.user.email ?? null,
+  };
+
+  return <ScanPageClient user={user} />;
 }
 
 export default function ScanPage() {
   return (
-    <Suspense fallback={<p className="p-8">Loading session...</p>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <p className="text-sm text-muted-foreground animate-pulse">Loading scanner session...</p>
+        </div>
+      }
+    >
       <ScanContent />
     </Suspense>
   );
