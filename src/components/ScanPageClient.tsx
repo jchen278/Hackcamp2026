@@ -77,6 +77,8 @@ function mapUiCategoryToVision(cat: Category): string {
 export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const defaultVolunteerWalletAddress =
+    process.env.NEXT_PUBLIC_SOLANA_REWARD_WALLET?.trim() ?? "";
 
   const queryPantryId = searchParams.get("pantryId");
   const [selectedPantryId, setSelectedPantryId] = useState<string>(
@@ -101,6 +103,9 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
   const [scanPointsAwarded, setScanPointsAwarded] = useState(0);
   const [pointsBalance, setPointsBalance] = useState<number | null>(null);
   const [pointsUpdateFailed, setPointsUpdateFailed] = useState(false);
+  const [volunteerWalletAddress, setVolunteerWalletAddress] = useState(
+    defaultVolunteerWalletAddress,
+  );
   const [vultrImageUrl, setVultrImageUrl] = useState<string | null>(null);
 
   const [analyzing, setAnalyzing] = useState(false);
@@ -281,7 +286,7 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
         })),
       };
 
-      // 3. Post to commit endpoint passing the Vultr CDN image URL & session
+      // Commit the volunteer-reviewed scan before attempting its Devnet bounty.
       const res = await fetch("/api/scan/commit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -289,19 +294,42 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
           pantryId: targetPantryId,
           scan: payload,
           imageUrl: vultrImageUrl,
+          volunteerWalletAddress: volunteerWalletAddress.trim(),
         }),
       });
 
+      const result = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        console.warn("DB commit warning:", errJson);
+        setError(
+          typeof result.error === "string"
+            ? result.error
+            : "The reviewed scan could not be saved. Please try again.",
+        );
+        setSubmitting(false);
+        return;
       }
+
+      const rewardStatus =
+        result.solanaRewardStatus === "sent" ||
+        result.solanaRewardStatus === "failed"
+          ? result.solanaRewardStatus
+          : "not_requested";
+      setMockSubmission(
+        {
+          ...submission,
+          solanaRewardStatus: rewardStatus,
+          solanaRewardSignature:
+            typeof result.solanaRewardTx === "string"
+              ? result.solanaRewardTx
+              : null,
+        },
+        preview,
+      );
+      router.push("/submitted");
     } catch (e) {
       console.warn("Backend commit skipped or network error:", e);
-    } finally {
-      // 4. Update local mock cache and route to confirmation screen
-      setMockSubmission(submission, preview);
-      router.push("/submitted");
+      setError("The reviewed scan could not be saved. Please check your connection and try again.");
+      setSubmitting(false);
     }
   };
 
@@ -454,6 +482,30 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
         )}
 
         {items && <Results items={items} />}
+
+        {items && file && (
+          <section className="space-y-2 rounded-2xl border bg-card p-4 shadow-soft">
+            <label
+              htmlFor="volunteer-solana-wallet"
+              className="block text-sm font-semibold text-foreground"
+            >
+              Solana Devnet wallet for volunteer reward
+            </label>
+            <input
+              id="volunteer-solana-wallet"
+              value={volunteerWalletAddress}
+              onChange={(event) => setVolunteerWalletAddress(event.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              disabled={submitting}
+              placeholder="Paste your public wallet address"
+              className="h-12 w-full rounded-xl border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+            />
+            <p className="text-xs text-muted-foreground">
+              A 0.01 SOL Devnet reward is sent to this address after you submit the reviewed scan. No wallet connection is needed.
+            </p>
+          </section>
+        )}
 
         {scanPointsAwarded > 0 && (
           <ScanConfirmation

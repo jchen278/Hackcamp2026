@@ -9,6 +9,8 @@ export interface PendingInventorySubmission {
   submittedAt: string;
   photoName: string;
   items: DetectedItem[];
+  solanaRewardStatus?: "sent" | "not_requested" | "failed";
+  solanaRewardSignature?: string | null;
 }
 
 export function validReviewItems(items: DetectedItem[]) {

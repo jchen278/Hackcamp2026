@@ -8,6 +8,7 @@ import {
   MapPin,
   FileImage,
   ListChecks,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +44,38 @@ export function SubmittedPageClient() {
             <p className="flex items-center justify-center gap-2 text-sm font-semibold text-primary">
               <Clock className="h-4 w-4" /> Logged &amp; Verified
             </p>
+
+            {submission.solanaRewardStatus === "sent" &&
+              submission.solanaRewardSignature && (
+                <section className="rounded-2xl border border-primary/30 bg-primary/5 p-4 text-left">
+                  <p className="font-semibold text-foreground">
+                    0.01 SOL Devnet reward sent
+                  </p>
+                  <a
+                    href={`https://explorer.solana.com/tx/${encodeURIComponent(submission.solanaRewardSignature)}?cluster=devnet`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    View transaction on Solana Explorer
+                    <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  </a>
+                </section>
+              )}
+            {submission.solanaRewardStatus === "failed" && (
+              <p
+                role="status"
+                className="rounded-xl bg-muted p-3 text-sm text-muted-foreground"
+              >
+                Your scan was saved, but the Devnet reward could not be sent.
+                Check the server’s Solana Devnet configuration and treasury balance.
+              </p>
+            )}
+            {submission.solanaRewardStatus === "not_requested" && (
+              <p className="text-sm text-muted-foreground">
+                No Devnet reward was requested. Add a wallet address on the scan page to receive one.
+              </p>
+            )}
 
             <section className="space-y-5 rounded-3xl border bg-card p-5 text-left shadow-soft sm:p-6">
               <div className="space-y-1">
