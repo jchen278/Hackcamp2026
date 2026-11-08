@@ -40,7 +40,19 @@ export async function POST(req: NextRequest) {
       file.type || "image/jpeg",
     );
 
-    // 4. Return scan result tagged with volunteer email; restock checks run after review and commit.
+    // 4. Check low-stock thresholds & trigger n8n restock alert if needed
+    await checkAndTriggerRestockAlert({
+      pantryId:
+        (formData.get("pantryId") as string),
+      pantryName:
+        (formData.get("pantryName") as string),
+      address:
+        (formData.get("address") as string),
+      capacityPct: extraction.capacityEstimatePct,
+      items: extraction.items,
+    });
+
+    // 5. Return scan result tagged with volunteer email
     return NextResponse.json(
       {
         data: extraction,
