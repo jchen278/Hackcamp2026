@@ -78,13 +78,17 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Resolve target pantry UUID (from URL ?pantryId=..., prop pantries, or fallback)
   const queryPantryId = searchParams.get("pantryId");
-  const activePantry =
-    pantries.find((p) => p.id === queryPantryId) || pantries[0];
   const [selectedPantryId, setSelectedPantryId] = useState<string>(
-    activePantry?.id || "",
+    queryPantryId || pantries[0]?.id || ""
   );
+
+  // Sync if pantries prop hydrates after initial render
+  useEffect(() => {
+    if (!selectedPantryId && pantries.length > 0) {
+      setSelectedPantryId(queryPantryId || pantries[0].id);
+    }
+  }, [pantries, queryPantryId, selectedPantryId]);
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -92,9 +96,13 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<DetectedItem[] | null>(null);
   const [rawScan, setRawScan] = useState<FridgeScanResponse | null>(null);
+
+  // Merged states: Both points tracking & Vultr CDN image URL
   const [scanPointsAwarded, setScanPointsAwarded] = useState(0);
   const [pointsBalance, setPointsBalance] = useState<number | null>(null);
   const [pointsUpdateFailed, setPointsUpdateFailed] = useState(false);
+  const [vultrImageUrl, setVultrImageUrl] = useState<string | null>(null);
+
   const [analyzing, setAnalyzing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reviewKey, setReviewKey] = useState(0);
@@ -145,6 +153,7 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
     setRawScan(null);
     setScanPointsAwarded(0);
     setPointsUpdateFailed(false);
+    setVultrImageUrl(null);
 
     const id = ++runId.current;
     if (!f) {
@@ -156,10 +165,19 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
     setReviewKey((k) => k + 1);
 
     try {
-      // 1. Call Gemini Vision API endpoint
       const compressedFile = await compressImage(f);
       const formData = new FormData();
       formData.append("image", compressedFile);
+
+      // Pass pantry metadata so the backend n8n trigger can process alerts
+      const currentPantry = pantries.find((p) => p.id === selectedPantryId);
+      if (selectedPantryId) {
+        formData.append("pantryId", selectedPantryId);
+        if (currentPantry) {
+          formData.append("pantryName", currentPantry.name);
+          formData.append("address", currentPantry.address);
+        }
+      }
 
       const res = await fetch("/api/scan", {
         method: "POST",
@@ -173,12 +191,18 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
         setError(
           typeof json.error === "string"
             ? json.error
-            : "Could not analyze this photo. Please try again.",
+            : "Could not analyze this photo. Please try again."
         );
         setAnalyzing(false);
         return;
       }
 
+      // 1. Process Vultr Object Storage Image URL
+      if (json.imageUrl) {
+        setVultrImageUrl(json.imageUrl);
+      }
+
+      // 2. Process Points Awarded
       const scanData: FridgeScanResponse = json.data;
       setRawScan(scanData);
       const pointsAwarded =
@@ -197,6 +221,7 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
         setPointsBalance(json.totalPoints);
       }
 
+      // 3. Process Detected Items
       if (
         scanData?.items &&
         Array.isArray(scanData.items) &&
@@ -215,17 +240,11 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
       } else {
         setError("No food items were detected. Try a clearer photo of the fridge contents.");
       }
-      setAnalyzing(false);
-
-      /* 2. Offline / Mock fallback if API fails or is unconfigured
-      const fallback = await recognizeFridgePhoto(f);
-      if (id !== runId.current) return;
-      setItems(fallback);
-      setAnalyzing(false); */
     } catch {
       if (id !== runId.current) return;
-      setError("Could not analyze this photo. Please try uploading it again.");
-      setAnalyzing(false);
+      setError("Network error while scanning. Please check your connection.");
+    } finally {
+      if (id === runId.current) setAnalyzing(false);
     }
   };
 
@@ -233,15 +252,21 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
     setSubmitting(true);
     setError(null);
 
-    // Resolve target pantry UUID
+    // 1. Resolve target pantry UUID
     const targetPantryId =
       selectedPantryId ||
       pantries.find((p) => p.id === submission.fridgeId)?.id ||
       pantries[0]?.id ||
       submission.fridgeId;
 
+    if (!targetPantryId) {
+      setError("Please select a target community fridge before submitting.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      // Build reconciled payload matching FridgeScanResponseSchema
+      // 2. Build verified inventory payload matching FridgeScanResponse
       const payload: FridgeScanResponse = {
         capacityEstimatePct: rawScan?.capacityEstimatePct ?? 45,
         cleanlinessScore: rawScan?.cleanlinessScore ?? "clean",
@@ -252,31 +277,29 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
           unit: "units",
           isPerishable: i.perishability === "high",
           needsRemoval: false,
+          notes: null,
         })),
       };
 
-      const res = await fetch(
-        `/api/pantries/${encodeURIComponent(targetPantryId)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            scan: payload,
-            metadata: {
-              scannedByEmail: user.email ?? null,
-              imageUrl: null,
-            },
-          }),
-        },
-      );
+      // 3. Post to commit endpoint passing the Vultr CDN image URL & session
+      const res = await fetch("/api/scan/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pantryId: targetPantryId,
+          scan: payload,
+          imageUrl: vultrImageUrl,
+        }),
+      });
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        console.warn("DB commit error:", errJson);
+        console.warn("DB commit warning:", errJson);
       }
     } catch (e) {
       console.warn("Backend commit skipped or network error:", e);
     } finally {
+      // 4. Update local mock cache and route to confirmation screen
       setMockSubmission(submission, preview);
       router.push("/submitted");
     }
@@ -319,7 +342,6 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
           </p>
         </header>
 
-        {/* Target Pantry Selector (if pantries passed) */}
         {pantries.length > 0 && (
           <section className="rounded-2xl border bg-card p-4 shadow-soft">
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
@@ -384,7 +406,6 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
           </section>
         )}
 
-        {/* AI Capacity & Disposal Flags Banner */}
         {rawScan && (
           <section className="rounded-3xl border bg-card p-5 shadow-soft space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -406,7 +427,6 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
               </div>
             </div>
 
-            {/* Display discarded / flagged items */}
             {rawScan.items.some((i) => i.needsRemoval) && (
               <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 space-y-2">
                 <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
@@ -520,7 +540,7 @@ function Results({ items }: { items: DetectedItem[] }) {
                   <span
                     className={cn(
                       "rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                      perish[it.perishability][1],
+                      perish[it.perishability][1]
                     )}
                   >
                     {perish[it.perishability][0]}
@@ -536,7 +556,7 @@ function Results({ items }: { items: DetectedItem[] }) {
                       <span
                         className={cn(
                           "block h-full",
-                          it.confidence < 0.7 ? "bg-warning" : "bg-primary",
+                          it.confidence < 0.7 ? "bg-warning" : "bg-primary"
                         )}
                         style={{ width: `${Math.round(it.confidence * 100)}%` }}
                       />
@@ -580,7 +600,7 @@ function Field({
 async function compressImage(
   file: File,
   maxWidth = 1280,
-  quality = 0.75,
+  quality = 0.75
 ): Promise<File> {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -612,11 +632,11 @@ async function compressImage(
             resolve(
               new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
                 type: "image/jpeg",
-              }),
+              })
             );
           },
           "image/jpeg",
-          quality,
+          quality
         );
       };
     };

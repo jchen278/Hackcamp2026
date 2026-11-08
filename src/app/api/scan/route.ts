@@ -3,7 +3,7 @@ import { parseFridgeImage } from "@/features/vision/server/parse-fridge-image";
 import { auth0 } from "@/lib/auth0";
 import { getUserPoints, updateUserPoints } from "@/lib/auth0-management";
 
-export const maxDuration = 30; // 30-second timeout for image processing
+// export const maxDuration = 30; // 30-second timeout for image processing
 
 export async function POST(req: NextRequest) {
   console.log("--> /api/scan hit!");
