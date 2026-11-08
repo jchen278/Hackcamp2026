@@ -8,12 +8,12 @@ PantryPulse is a decentralized mutual-aid inventory and redistribution system fo
 
 ```text
 [ Mobile / Web Client ]
-  Next.js 15 (React 19, Tailwind, shadcn) ──► Camera Capture / Image Upload
+  Next.js 16 App Router (React 19, Tailwind CSS 4, shadcn/ui) ──► Camera Capture / Image Upload
                                                      │
                                                Multipart Form / Base64
                                                      ▼
 [ Vision & Extraction Pipeline ]
-  Gemini 1.5/2.0 API (Structured JSON Schema) ──► Validates against Zod schema
+  Gemini API via @google/genai (Structured JSON Schema) ──► Validates against Zod schema
                                                      │
                                                Parsed Inventory Records
                                                      ▼
@@ -29,13 +29,14 @@ PantryPulse is a decentralized mutual-aid inventory and redistribution system fo
 
 ### Stack & Sponsor Constraints
 
-- Frontend Framework: Next.js (App Router, Server Actions, React 19), TypeScript 5.x (Strict mode).
-- Styling & UI: Tailwind CSS, shadcn/ui, Lucide React icons.
+- Frontend Framework: Next.js 16 App Router, React 19, TypeScript 5.x (strict mode). Interactive UI uses client components; API endpoints use Route Handlers.
+- Styling & UI: Tailwind CSS 4, shadcn/ui components, and Lucide React icons.
 - Authentication: Auth0 (@auth0/nextjs-auth0) for volunteer/admin roles.
-- Vision Model: Gemini API (@google/genai or @google/generative-ai) enforcing strict structured output JSON.
-- Operational Database: Tiger Data (Managed PostgreSQL via pg connection pool or Drizzle/Prisma).
+- Vision Model: Gemini API using `@google/genai` with structured JSON output validated by Zod.
+- Operational Database: Tiger Data/PostgreSQL accessed through the `pg` connection pool.
 - Workflow Automation: n8n Webhook endpoints for automated dispatching.
-- Package Manager: npm exclusively (npm install, npm dev, npm build).
+- Object Storage: Vultr S3-compatible storage accessed with @aws-sdk/client-s3.
+- Package Manager: npm (see the scripts in `package.json`; use `npm run dev` and `npm run build`).
 
 ## 2. Core Domain Invariants & Zero-Tolerance Rules
 
