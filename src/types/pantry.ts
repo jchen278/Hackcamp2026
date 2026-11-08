@@ -12,7 +12,7 @@ export interface PantryLocation {
   longitude: number;
   status: PantryStatus;
   capacityPct: number;
-  cleanliness: "clean" | "moderate" | "needs_attention";
+  cleanliness: "clean" | "moderate" | "needs attention";
   lastScannedAt: string | null;
 }
 

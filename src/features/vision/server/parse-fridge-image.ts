@@ -5,7 +5,7 @@ const SYSTEM_INSTRUCTION = `
 You are an expert civic food security assistant auditing community fridge and pantry shelves in Metro Vancouver.
 Analyze the image of the pantry/fridge interior and output a strict JSON object following this format:
 - capacityEstimatePct: integer (0-100) estimating how full the fridge/shelf is.
-- cleanlinessScore: one of ["clean", "moderate", "needs_attention"].
+- cleanlinessScore: one of ["clean", "moderate", "needs attention"].
 - items: array of detected items. Each item must have:
   - name: clear standardized grocery name (e.g., "Canned Diced Tomatoes", "Whole Milk")
   - category: one of ["canned_goods", "fresh_produce", "dairy_and_eggs", "prepared_meals", "bakery", "dry_staples", "beverages", "hygiene", "other"]

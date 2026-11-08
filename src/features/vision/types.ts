@@ -27,7 +27,7 @@ export const ExtractedItemSchema = z.object({
 
 export const FridgeScanResponseSchema = z.object({
   capacityEstimatePct: z.number().int().min(0).max(100).describe("Overall fridge fullness 0-100"),
-  cleanlinessScore: z.enum(["clean", "moderate", "needs_attention"]),
+  cleanlinessScore: z.enum(["clean", "moderate", "needs attention"]),
   items: z.array(ExtractedItemSchema),
 });
 
