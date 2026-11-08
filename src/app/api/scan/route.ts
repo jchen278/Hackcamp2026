@@ -44,14 +44,11 @@ export async function POST(req: NextRequest) {
     // 4. Check low-stock thresholds & trigger n8n restock alert if needed
     await checkAndTriggerRestockAlert({
       pantryId:
-        (formData.get("pantryId") as string) ||
-        "b8a8b13d-5df7-4b7b-8919-4c8d5c41498b",
+        (formData.get("pantryId") as string),
       pantryName:
-        (formData.get("pantryName") as string) ||
-        "Little Mountain Community Fridge",
+        (formData.get("pantryName") as string),
       address:
-        (formData.get("address") as string) ||
-        "Main St & 30th Ave, Vancouver, BC",
+        (formData.get("address") as string),
       capacityPct: extraction.capacityEstimatePct,
       items: extraction.items,
     });
