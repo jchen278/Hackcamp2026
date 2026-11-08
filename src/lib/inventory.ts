@@ -27,6 +27,7 @@ export interface InventoryItem {
   category: Category;
   quantity: number;
   perishability?: Perishability | undefined;
+  unit?: string | null;
   updatedAt: string;
 }
 

@@ -27,18 +27,35 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { FridgePicker, MapPreview, LocationStatus } from "@/components/FridgeLocator";
 import { AddFridgeLocation } from "@/components/AddFridgeLocation";
-import { useFridgeLocations } from "@/lib/fridge-locations";
+import type { LiveFridge } from "@/features/pantries/queries";
 import garden from "@/assets/community-garden.jpg";
+import type { Fridge } from "@/lib/fridge-locations";
 
 interface UserProfile {
   name?: string | null;
   email?: string | null;
 }
 
-export function HomePageClient({ user }: { user: UserProfile | null }) {
-  const [fridgeId, setFridgeId] = useState<string | null>(null);
-  const fridges = useFridgeLocations();
-  const fridge = fridges.find((f) => f.id === fridgeId);
+interface HomePageClientProps {
+  user: UserProfile | null;
+  initialFridges?: LiveFridge[];
+}
+
+export function HomePageClient({ user, initialFridges = [] }: HomePageClientProps) {
+  // Map LiveFridge from Tiger Data into the UI's Fridge shape
+  const fridges: Fridge[] = initialFridges.map((f) => ({
+    ...f,
+    neighbourhood: f.neighbourhood ?? undefined,
+    coordinates: f.coordinates ?? undefined,
+    status: f.status ?? "active",
+    // Supply defaults for the missing Lovable UI properties:
+    map: {
+      coordinates: f.coordinates ?? [49.2606, -123.246], // default fallback to Vancouver/UBC
+    } as any,
+    history: [],
+  })) as unknown as Fridge[];
+  const [fridgeId, setFridgeId] = useState<string | null>(fridges[0]?.id ?? null);
+  const fridge = fridges.find((f) => f.id === fridgeId) ?? fridges[0];
 
   const scanPath = "/scan";
   const loginPath = "/auth/login";
@@ -298,11 +315,11 @@ export function HomePageClient({ user }: { user: UserProfile | null }) {
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Currently available items
                   </p>
-                  {fridge.inventory.length ? (
+                  {fridge.inventory && fridge.inventory.length > 0 ? (
                     <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-                      {fridge.inventory.map((item) => (
+                      {fridge.inventory.map((item, idx) => (
                         <li
-                          key={item.name}
+                          key={`${item.name}-${idx}`}
                           className="flex items-center justify-between border-b border-border/80 py-2.5 text-sm"
                         >
                           <span>
@@ -310,21 +327,21 @@ export function HomePageClient({ user }: { user: UserProfile | null }) {
                             <span className="text-xs text-muted-foreground">· {item.category}</span>
                           </span>
                           <span className="font-mono font-semibold rounded-full bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
-                            {item.quantity} units
+                            {item.quantity} {item.unit || "units"}
                           </span>
                         </li>
                       ))}
                     </ul>
                   ) : (
                     <p className="mt-2 text-sm text-muted-foreground italic">
-                      No items reported yet for this location.
+                      No items currently recorded in Tiger Data for this location.
                     </p>
                   )}
                 </div>
 
                 <div className="mt-6 flex justify-end">
                   <Button asChild size="sm" className="rounded-full">
-                    <Link href={`/scan?fridgeId=${fridge.id}`}>
+                    <Link href={`/scan?pantryId=${fridge.id}`}>
                       <Camera className="h-3.5 w-3.5 mr-1" /> Update this fridge
                     </Link>
                   </Button>

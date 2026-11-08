@@ -2,7 +2,24 @@ import { query, pool } from "@/lib/db";
 import { PantryLocation, InventoryItem } from "@/types/pantry";
 import { FridgeScanResponse } from "@/features/vision/types";
 
-// 1. Fetch all pantry locations
+export interface LiveFridge {
+  id: string;
+  name: string;
+  address: string;
+  neighbourhood?: string | null;
+  coordinates?: [number, number] | null;
+  status?: "active" | "needs_attention" | "empty";
+  capacityPct?: number;
+  cleanliness?: string;
+  inventory: Array<{
+    name: string;
+    category: string;
+    quantity: number;
+    unit?: string;
+  }>;
+}
+
+// 1. Fetch all pantry locations (Fixed table name: pantry_locations)
 export async function getPantries(): Promise<PantryLocation[]> {
   const result = await query<PantryLocation>(`
     SELECT 
@@ -15,7 +32,7 @@ export async function getPantries(): Promise<PantryLocation[]> {
       capacity_pct AS "capacityPct", 
       cleanliness, 
       last_scanned_at AS "lastScannedAt"
-    FROM pantries
+    FROM pantry_locations
     ORDER BY name ASC;
   `);
   return result.rows;
@@ -43,7 +60,52 @@ export async function getPantryInventory(pantryId: string): Promise<InventoryIte
   return result.rows;
 }
 
-// 3. Commit verified scan to Tiger Data
+// 3. Fetch all fridges with nested live inventory for the Home Page & Map
+export async function getFridgesWithInventory(): Promise<LiveFridge[]> {
+  const result = await query<any>(`
+    SELECT 
+      p.id,
+      p.name,
+      p.address,
+      p.neighbourhood,
+      p.latitude,
+      p.longitude,
+      p.capacity_pct,
+      p.cleanliness,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'name', i.item_name,
+            'category', i.category,
+            'quantity', i.quantity,
+            'unit', i.unit
+          )
+        ) FILTER (WHERE i.id IS NOT NULL),
+        '[]'
+      ) AS inventory
+    FROM pantry_locations p
+    LEFT JOIN pantry_inventory i ON p.id = i.pantry_id
+    GROUP BY p.id
+    ORDER BY p.name ASC;
+  `);
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    address: row.address,
+    neighbourhood: row.neighbourhood,
+    coordinates:
+      row.latitude && row.longitude
+        ? [parseFloat(row.latitude), parseFloat(row.longitude)]
+        : null,
+    capacityPct: row.capacity_pct ?? 0,
+    cleanliness: row.cleanliness ?? "clean",
+    status: (row.capacity_pct ?? 0) < 20 ? "empty" : "active",
+    inventory: row.inventory ?? [],
+  }));
+}
+
+// 4. Commit verified scan to Tiger Data
 export async function commitScanResult(
   pantryId: string, 
   scan: FridgeScanResponse,
@@ -54,10 +116,10 @@ export async function commitScanResult(
   try {
     await client.query("BEGIN");
 
-    // A. Update current capacity and cleanliness on the pantry record
+    // A. Update current capacity and cleanliness on pantry_locations
     await client.query(
       `
-      UPDATE pantries
+      UPDATE pantry_locations
       SET 
         capacity_pct = $1,
         cleanliness = $2,
