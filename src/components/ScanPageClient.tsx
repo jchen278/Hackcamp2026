@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   CalendarClock,
@@ -11,6 +11,8 @@ import {
   Info,
   Loader2,
   Sparkles,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 import { recognizeFridgePhoto, type DetectedItem, type Category } from "@/lib/inventory";
 import { cn } from "@/lib/utils";
@@ -18,10 +20,17 @@ import { PhotoUpload } from "@/components/PhotoUpload";
 import { InventoryReview } from "@/components/InventoryReview";
 import { Button } from "@/components/ui/button";
 import { setMockSubmission } from "@/lib/mock-submission";
+import type { PantryLocation } from "@/types/pantry";
+import type { FridgeScanResponse } from "@/features/vision/types";
 
 interface UserProfile {
   name?: string | null;
   email?: string | null;
+}
+
+interface ScanPageClientProps {
+  user: UserProfile;
+  pantries?: PantryLocation[];
 }
 
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
@@ -65,13 +74,21 @@ function mapUiCategoryToVision(cat: Category): string {
   }
 }
 
-export function ScanPageClient({ user }: { user: UserProfile }) {
+export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Resolve target pantry UUID (from URL ?pantryId=..., prop pantries, or fallback)
+  const queryPantryId = searchParams.get("pantryId");
+  const activePantry = pantries.find((p) => p.id === queryPantryId) || pantries[0];
+  const [selectedPantryId, setSelectedPantryId] = useState<string>(activePantry?.id || "");
+
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [at, setAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<DetectedItem[] | null>(null);
+  const [rawScan, setRawScan] = useState<FridgeScanResponse | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reviewKey, setReviewKey] = useState(0);
@@ -90,6 +107,7 @@ export function ScanPageClient({ user }: { user: UserProfile }) {
     setPreview(f ? URL.createObjectURL(f) : null);
     setAt(f ? new Date() : null);
     setItems(null);
+    setRawScan(null);
 
     const id = ++runId.current;
     if (!f) {
@@ -101,9 +119,10 @@ export function ScanPageClient({ user }: { user: UserProfile }) {
     setReviewKey((k) => k + 1);
 
     try {
-      // 1. Try real Gemini API endpoint
+      // 1. Call Gemini Vision API endpoint
+      const compressedFile = await compressImage(f);
       const formData = new FormData();
-      formData.append("image", f);
+      formData.append("image", compressedFile);
 
       const res = await fetch("/api/scan", {
         method: "POST",
@@ -114,33 +133,32 @@ export function ScanPageClient({ user }: { user: UserProfile }) {
 
       if (res.ok) {
         const json = await res.json();
-        const scanData = json.data;
+        const scanData: FridgeScanResponse = json.data;
+        setRawScan(scanData);
+
         if (scanData?.items && Array.isArray(scanData.items) && scanData.items.length > 0) {
-          const mapped: DetectedItem[] = scanData.items.map(
-            (it: { name: string; category: string; estimatedQuantity?: number; isPerishable?: boolean }, idx: number) => ({
-              id: `ai-${idx}-${Date.now()}`,
-              name: it.name,
-              category: mapVisionCategoryToUi(it.category),
-              quantity: Number(it.estimatedQuantity) || 1,
-              perishability: it.isPerishable ? "high" : "low",
-              confidence: 0.92,
-              source: "ai" as const,
-            })
-          );
+          const mapped: DetectedItem[] = scanData.items.map((it, idx) => ({
+            id: `ai-${idx}-${Date.now()}`,
+            name: it.name,
+            category: mapVisionCategoryToUi(it.category),
+            quantity: Number(it.estimatedQuantity) || 1,
+            perishability: it.isPerishable ? "high" : "low",
+            confidence: 0.95,
+            source: "ai" as const,
+          }));
           setItems(mapped);
           setAnalyzing(false);
           return;
         }
       }
 
-      // 2. Offline / mock fallback if API returns empty or is unconfigured
+      // 2. Offline / Mock fallback if API fails or is unconfigured
       const fallback = await recognizeFridgePhoto(f);
       if (id !== runId.current) return;
       setItems(fallback);
       setAnalyzing(false);
     } catch {
       if (id !== runId.current) return;
-      // Fallback gracefully on network error or offline conditions
       try {
         const fallback = await recognizeFridgePhoto(f);
         if (id !== runId.current) return;
@@ -149,6 +167,57 @@ export function ScanPageClient({ user }: { user: UserProfile }) {
         setError("Could not analyze this photo. Please try uploading it again.");
       }
       setAnalyzing(false);
+    }
+  };
+
+  const handleAuditSubmit = async (submission: any) => {
+    setSubmitting(true);
+    setError(null);
+
+    // Resolve target pantry UUID
+    const targetPantryId =
+      selectedPantryId ||
+      pantries.find((p) => p.id === submission.fridgeId)?.id ||
+      pantries[0]?.id ||
+      submission.fridgeId;
+
+    try {
+      // Build reconciled payload matching FridgeScanResponseSchema
+      const payload: FridgeScanResponse = {
+        capacityEstimatePct: rawScan?.capacityEstimatePct ?? 45,
+        cleanlinessScore: rawScan?.cleanlinessScore ?? "clean",
+        items: submission.items.map((i: DetectedItem) => ({
+          name: i.name,
+          category: mapUiCategoryToVision(i.category),
+          estimatedQuantity: i.quantity,
+          unit: "units",
+          isPerishable: i.perishability === "high",
+          needsRemoval: false,
+          notes: null, // explicit null matches schema
+        })),
+      };
+
+      const res = await fetch(`/api/pantries/${encodeURIComponent(targetPantryId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scan: payload,
+          metadata: {
+            scannedByEmail: user.email ?? null,
+            imageUrl: null,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        console.warn("DB commit error:", errJson);
+      }
+    } catch (e) {
+      console.warn("Backend commit skipped or network error:", e);
+    } finally {
+      setMockSubmission(submission, preview);
+      router.push("/submitted");
     }
   };
 
@@ -183,8 +252,33 @@ export function ScanPageClient({ user }: { user: UserProfile }) {
           </p>
         </header>
 
+        {/* Target Pantry Selector (if pantries passed) */}
+        {pantries.length > 0 && (
+          <section className="rounded-2xl border bg-card p-4 shadow-soft">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Target Community Fridge
+            </label>
+            <select
+              value={selectedPantryId}
+              onChange={(e) => setSelectedPantryId(e.target.value)}
+              className="w-full rounded-xl border bg-background px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {pantries.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.address})
+                </option>
+              ))}
+            </select>
+          </section>
+        )}
+
         <section className="space-y-4 rounded-3xl border bg-card p-5 shadow-soft sm:p-6">
-          <PhotoUpload preview={preview} file={file} onFile={onFile} disabled={analyzing || submitting} />
+          <PhotoUpload
+            preview={preview}
+            file={file}
+            onFile={onFile}
+            disabled={analyzing || submitting}
+          />
           {error && (
             <p className="rounded-xl bg-destructive/15 p-3 text-sm text-destructive">{error}</p>
           )}
@@ -206,8 +300,44 @@ export function ScanPageClient({ user }: { user: UserProfile }) {
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="mt-4 text-lg font-semibold">Analyzing your fridge photo...</p>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Multimodal vision is identifying food items and estimating quantities. This takes a few seconds.
+              Multimodal vision is identifying food items, evaluating capacity, and checking spoilage.
             </p>
+          </section>
+        )}
+
+        {/* AI Capacity & Disposal Flags Banner */}
+        {rawScan && (
+          <section className="rounded-3xl border bg-card p-5 shadow-soft space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-2xl bg-muted p-4">
+                <span className="text-xs uppercase font-medium text-muted-foreground">Capacity</span>
+                <p className="text-2xl font-bold text-primary mt-1">{rawScan.capacityEstimatePct}%</p>
+              </div>
+              <div className="rounded-2xl bg-muted p-4">
+                <span className="text-xs uppercase font-medium text-muted-foreground">Cleanliness</span>
+                <p className="text-2xl font-bold capitalize text-primary mt-1">{rawScan.cleanlinessScore}</p>
+              </div>
+            </div>
+
+            {/* Display discarded / flagged items */}
+            {rawScan.items.some((i) => i.needsRemoval) && (
+              <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>Items Flagged for Removal / Disposal</span>
+                </div>
+                <ul className="text-xs space-y-1 text-muted-foreground">
+                  {rawScan.items
+                    .filter((i) => i.needsRemoval)
+                    .map((item, idx) => (
+                      <li key={idx} className="flex justify-between items-center bg-card/60 p-2 rounded-lg">
+                        <span className="font-medium text-destructive">{item.name}</span>
+                        <span>{item.notes || "Spoiled / Unsafe"}</span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
           </section>
         )}
 
@@ -220,33 +350,7 @@ export function ScanPageClient({ user }: { user: UserProfile }) {
             onChange={setItems}
             submittedBy={displayName}
             photoName={file.name}
-            onSubmitted={async (submission) => {
-              setSubmitting(true);
-              try {
-                // Attempt to commit to backend route if available
-                await fetch(`/api/pantries/${encodeURIComponent(submission.fridgeId)}`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    scan: {
-                      capacityEstimatePct: 45,
-                      cleanlinessScore: "clean",
-                      items: submission.items.map((i) => ({
-                        name: i.name,
-                        category: mapUiCategoryToVision(i.category),
-                        estimatedQuantity: i.quantity,
-                        unit: "units",
-                        isPerishable: i.perishability === "high",
-                        needsRemoval: false,
-                      })),
-                    },
-                  }),
-                }).catch((e) => console.warn("Backend commit skipped or mock pantry:", e));
-              } finally {
-                setMockSubmission(submission, preview);
-                router.push("/submitted");
-              }
-            }}
+            onSubmitted={handleAuditSubmit}
           />
         )}
       </main>
@@ -344,4 +448,42 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <dd className="mt-0.5">{children}</dd>
     </div>
   );
+}
+
+async function compressImage(file: File, maxWidth = 1280, quality = 0.75): Promise<File> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            resolve(new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" }));
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+    };
+  });
 }

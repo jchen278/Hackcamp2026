@@ -1,5 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
 import { FridgeScanResponseSchema, type FridgeScanResponse } from "../types";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 
 const SYSTEM_INSTRUCTION = `
 You are an expert civic food security assistant auditing community fridge and pantry shelves in Metro Vancouver.
@@ -33,9 +33,6 @@ export async function parseFridgeImage(
       role: "user",
       parts: [
         {
-          text: SYSTEM_INSTRUCTION,
-        },
-        {
           inlineData: {
             mimeType,
             data: base64Data,
@@ -50,7 +47,11 @@ export async function parseFridgeImage(
       model: modelName,
       contents: promptContents,
       config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.MINIMAL,
+        },
         temperature: 0.1,
       },
     });
@@ -58,12 +59,12 @@ export async function parseFridgeImage(
 
   let response;
   try {
-    // Primary: high-intelligence model
-    response = await callModel("gemini-3.8-flash");
-  } catch {
-    console.warn("gemini-3.8-flash busy (503/429), failing over to gemini-3.5-flash-lite...");
-    // Instant fallback: high-availability model
+    // Primary: ultra-fast, high-availability model (~2-3s)
     response = await callModel("gemini-3.5-flash-lite");
+  } catch (err) {
+    console.warn("gemini-3.5-flash-lite busy, falling back to gemini-3.8-flash...", err);
+    // Fallback: flagship model with minimal thinking
+    response = await callModel("gemini-3.8-flash");
   }
 
   const rawText = response.text;
