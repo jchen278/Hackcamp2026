@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.33.0",
+    "@aws-sdk/client-s3": "^3.1164.0",
     "@base-ui/react": "^1.9.0",
     "@google/genai": "^3.0.0",
     "@hookform/resolvers": "^5.2.2",

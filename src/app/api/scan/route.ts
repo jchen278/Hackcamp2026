@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseFridgeImage } from "@/features/vision/server/parse-fridge-image";
 import { auth0 } from "@/lib/auth0";
 import { checkAndTriggerRestockAlert } from "@/features/alerts/server/check-and-trigger-alert";
+import { uploadAuditImage } from "@/lib/vultr-storage";
 
-export const maxDuration = 30; // 30-second timeout for image processing
+export const maxDuration = 60; // Extended timeout for Vultr upload + Gemini vision
 
 export async function POST(req: NextRequest) {
   console.log("--> /api/scan hit!");
   console.log("--> GEMINI_API_KEY detected:", !!process.env.GEMINI_API_KEY);
+  console.log("--> VULTR_BUCKET detected:", !!process.env.VULTR_BUCKET_NAME);
+
   try {
     // 1. Extract verified volunteer session from Auth0
     const session = await auth0.getSession();
@@ -15,52 +18,63 @@ export async function POST(req: NextRequest) {
     if (!session?.user) {
       return NextResponse.json(
         { error: "Unauthorized. Volunteer login required." },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
-    // 2. Parse uploaded scan image payload
     const volunteerEmail = session.user.email;
 
+    // 2. Parse uploaded scan image payload
     const formData = await req.formData();
     const file = formData.get("image") as File | null;
 
     if (!file) {
       return NextResponse.json(
         { error: "No image file provided" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const mimeType = file.type || "image/jpeg";
 
-    // 3. Extract inventory with Gemini
-    const extraction = await parseFridgeImage(
-      buffer,
-      file.type || "image/jpeg",
-    );
+    // 3. Upload photo to Vultr Object Storage (S3-compatible)
+    let imageUrl: string | null = null;
+    try {
+      imageUrl = await uploadAuditImage(buffer, file.name || "fridge-scan.jpg", mimeType);
+      console.log("--> Stored audit image in Vultr Object Storage:", imageUrl);
+    } catch (vultrErr) {
+      console.warn("Vultr Object Storage upload failed; continuing scan without CDN link:", vultrErr);
+    }
 
-    // 4. Check low-stock thresholds & trigger n8n restock alert if needed
-    await checkAndTriggerRestockAlert({
-      pantryId:
-        (formData.get("pantryId") as string),
-      pantryName:
-        (formData.get("pantryName") as string),
-      address:
-        (formData.get("address") as string),
-      capacityPct: extraction.capacityEstimatePct,
-      items: extraction.items,
-    });
+    // 4. Extract inventory with Gemini
+    const extraction = await parseFridgeImage(buffer, mimeType);
 
-    // 5. Return scan result tagged with volunteer email
+    // 5. Check low-stock thresholds & trigger n8n restock alert if needed
+    const pantryId = formData.get("pantryId") as string;
+    const pantryName = formData.get("pantryName") as string;
+    const address = formData.get("address") as string;
+
+    if (pantryId) {
+      await checkAndTriggerRestockAlert({
+        pantryId,
+        pantryName: pantryName || "Community Pantry",
+        address: address || "",
+        capacityPct: extraction.capacityEstimatePct,
+        items: extraction.items,
+      });
+    }
+
+    // 6. Return scan result tagged with volunteer email and Vultr image URL
     return NextResponse.json(
       {
         data: extraction,
+        imageUrl,
         scannedBy: volunteerEmail,
         timestamp: new Date().toISOString(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error: unknown) {
     console.error("Scan route error:", error);
