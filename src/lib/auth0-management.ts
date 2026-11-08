@@ -116,7 +116,7 @@ export async function updateUserPoints(
   newPoints: number,
 ): Promise<void> {
   if (!Number.isSafeInteger(newPoints) || newPoints < 0) {
-    throw new Error("PantryPulse points must be a non-negative integer.");
+    throw new Error("SpreadTheLoaf points must be a non-negative integer.");
   }
 
   const response = await auth0UserRequest(userId, {

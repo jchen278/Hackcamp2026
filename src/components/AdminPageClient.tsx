@@ -129,7 +129,7 @@ export function AdminPageClient({
             href="/"
             className="font-display text-xl font-bold text-primary"
           >
-            PantryPulse
+            SpreadTheLoaf
           </Link>
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm">

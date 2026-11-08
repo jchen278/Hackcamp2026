@@ -3,9 +3,9 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
-  title: "PantryPulse — A little shared, a lot of good",
+  title: "SpreadTheLoaf — A little shared, a lot of good",
   description:
-    "Find community fridges in Vancouver, share surplus food, and help your neighbours with PantryPulse.",
+    "Find community fridges in Vancouver, share surplus food, and help your neighbours with SpreadTheLoaf.",
   icons: {
     icon: "/favicon.ico",
   },

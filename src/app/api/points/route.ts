@@ -16,7 +16,7 @@ export async function GET() {
   } catch (error: unknown) {
     console.error("GET /api/points failed:", error);
     return NextResponse.json(
-      { error: "Failed to load PantryPulse points from Auth0." },
+      { error: "Failed to load SpreadTheLoaf points from Auth0." },
       { status: 502 },
     );
   }

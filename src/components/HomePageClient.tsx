@@ -136,7 +136,7 @@ export function HomePageClient({
             className="flex items-center gap-2 font-display text-xl font-bold text-primary"
           >
             <Leaf className="h-5 w-5" />
-            <span>PantryPulse</span>
+            <span>SpreadTheLoaf</span>
           </Link>
 
           <DropdownMenu>
@@ -227,7 +227,7 @@ export function HomePageClient({
         <section className="pastoral-hero relative isolate overflow-hidden min-h-[520px] flex items-center">
           <Image
             src={garden}
-            alt="PantryPulse community fridge garden"
+            alt="SpreadTheLoaf community fridge garden"
             priority
             fill
             className="absolute inset-0 -z-20 h-full w-full object-cover"
@@ -237,7 +237,7 @@ export function HomePageClient({
             <p className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
               Good food. Shared freely.
             </p>
-            <h1 className="hero-name text-primary">PantryPulse</h1>
+            <h1 className="hero-name text-primary">SpreadTheLoaf</h1>
             <p className="hero-tagline mt-2 font-display text-primary">
               A little shared,
               <br />
@@ -544,7 +544,7 @@ export function HomePageClient({
           <div className="flex items-center gap-2">
             <Leaf className="h-5 w-5 text-primary" />
             <span className="font-display text-xl font-bold text-primary">
-              PantryPulse
+              SpreadTheLoaf
             </span>
           </div>
           <span className="text-xs text-muted-foreground">

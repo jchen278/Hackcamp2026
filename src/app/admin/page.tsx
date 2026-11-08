@@ -27,7 +27,7 @@ async function AdminContent() {
             <h1 className="mt-2 text-3xl font-bold text-foreground">Admin role not found in this session</h1>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               You are signed in, but this app did not receive the <code>admin</code> role in the
-              Auth0 ID token claim <code>https://pantrypulse.com/roles</code>.
+              configured roles claim in the Auth0 ID token.
             </p>
           </div>
 
