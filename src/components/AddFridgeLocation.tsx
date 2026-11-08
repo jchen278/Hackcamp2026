@@ -43,11 +43,11 @@ export function AddFridgeLocation({
         </DialogHeader>
         <form
           className="space-y-4"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
             const data = new FormData(event.currentTarget);
             try {
-              const location = addLocation({
+              const location = await addLocation({
                 name: String(data.get("name") ?? ""),
                 address: String(data.get("address") ?? ""),
                 neighbourhood: String(data.get("neighbourhood") ?? ""),
