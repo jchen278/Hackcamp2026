@@ -38,6 +38,20 @@ export async function getPantries(): Promise<PantryLocation[]> {
   return result.rows;
 }
 
+export async function getPantryAlertContext(
+  pantryId: string,
+): Promise<{ id: string; name: string; address: string } | null> {
+  const result = await query<{ id: string; name: string; address: string }>(
+    `
+    SELECT id, name, address
+    FROM pantries
+    WHERE id = $1;
+  `,
+    [pantryId],
+  );
+  return result.rows[0] ?? null;
+}
+
 // 2. Fetch inventory for a specific pantry
 export async function getPantryInventory(
   pantryId: string,

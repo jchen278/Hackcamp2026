@@ -51,22 +51,8 @@ export async function POST(req: NextRequest) {
     // 4. Extract inventory with Gemini
     const extraction = await parseFridgeImage(buffer, mimeType);
 
-    // 5. Check low-stock thresholds & trigger n8n restock alert if needed
-    const pantryId = formData.get("pantryId") as string;
-    const pantryName = formData.get("pantryName") as string;
-    const address = formData.get("address") as string;
-
-    if (pantryId) {
-      await checkAndTriggerRestockAlert({
-        pantryId,
-        pantryName: pantryName || "Community Pantry",
-        address: address || "",
-        capacityPct: extraction.capacityEstimatePct,
-        items: extraction.items,
-      });
-    }
-
-    // 6. Return scan result tagged with volunteer email and Vultr image URL
+    // Return extraction only. Restock checks run after the volunteer confirms
+    // and commits the reviewed scan in /api/pantries/[id].
     return NextResponse.json(
       {
         data: extraction,

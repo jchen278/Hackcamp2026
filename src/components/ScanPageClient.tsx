@@ -400,6 +400,9 @@ export function ScanPageClient({ user, pantries = [] }: ScanPageClientProps) {
             onChange={setItems}
             submittedBy={displayName}
             photoName={file.name}
+            pantries={pantries}
+            selectedPantryId={selectedPantryId}
+            onPantryChange={setSelectedPantryId}
             onSubmitted={handleAuditSubmit}
           />
         )}
